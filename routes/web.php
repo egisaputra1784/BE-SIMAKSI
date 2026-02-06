@@ -15,3 +15,12 @@ Route::get('/admin/form', function () {
     return view('admin.form');
 });
 
+
+Route::get('/guru', function () {
+    return view('guru.index');
+});
+
+Route::get('/guru/form', function () {
+    return view('guru.form');
+});
+

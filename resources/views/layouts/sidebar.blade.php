@@ -40,7 +40,7 @@
             <div class="collapse" id="userMenu">
                 <ul class="nav flex-column sub-menu">
                     <li><a class="nav-link" href="/admin"><i class="mdi mdi-shield-account me-2"></i> Admin</a></li>
-                    <li><a class="nav-link" href="#"><i class="mdi mdi-account-tie me-2"></i> Guru</a></li>
+                    <li><a class="nav-link" href="/guru"><i class="mdi mdi-account-tie me-2"></i> Guru</a></li>
                     <li><a class="nav-link" href="#"><i class="mdi mdi-school me-2"></i> Murid</a></li>
                 </ul>
             </div>
@@ -51,6 +51,7 @@
         <li class="pt-3 pb-1">
             <span class="nav-item-head">Akademik</span>
         </li>
+        
 
         <li class="nav-item">
             <a class="nav-link" href="#">

@@ -6,11 +6,11 @@
         {{-- HEADER --}}
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h3 class="fw-bold mb-0">Tambah Admin</h3>
-                <small class="text-muted">Buat akun administrator baru</small>
+                <h3 class="fw-bold mb-0">Tambah Guru</h3>
+                <small class="text-muted">Buat akun guru / pengajar baru</small>
             </div>
 
-            <a href="/admin" class="btn btn-light">
+            <a href="/guru" class="btn btn-light">
                 <i class="mdi mdi-arrow-left"></i> Kembali
             </a>
         </div>
@@ -27,14 +27,21 @@
                             {{-- Nama --}}
                             <div class="mb-3">
                                 <label class="form-label">Nama Lengkap</label>
-                                <input type="text" class="form-control" placeholder="Contoh: Egi Noviani Saputra">
+                                <input type="text" class="form-control" placeholder="Contoh: Budi Santoso">
                             </div>
 
 
                             {{-- Email --}}
                             <div class="mb-3">
                                 <label class="form-label">Email</label>
-                                <input type="email" class="form-control" placeholder="admin@email.com">
+                                <input type="email" class="form-control" placeholder="guru@email.com">
+                            </div>
+
+
+                            {{-- NIP --}}
+                            <div class="mb-3">
+                                <label class="form-label">NIP</label>
+                                <input type="text" class="form-control" placeholder="Nomor Induk Pegawai">
                             </div>
 
 
@@ -52,18 +59,18 @@
                             </div>
 
 
-                            {{-- Role hidden (auto admin) --}}
-                            <input type="hidden" value="admin">
+                            {{-- Role hidden --}}
+                            <input type="hidden" name="role" value="guru">
 
 
                             {{-- BUTTON --}}
                             <div class="d-flex gap-2 mt-4">
 
-                                <button type="submit" class="btn btn-primary">
+                                <button type="submit" class="btn btn-success">
                                     <i class="mdi mdi-content-save"></i> Simpan
                                 </button>
 
-                                <a href="/admin" class="btn btn-secondary">
+                                <a href="/guru" class="btn btn-secondary">
                                     Batal
                                 </a>
 
