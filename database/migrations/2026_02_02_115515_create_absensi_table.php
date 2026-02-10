@@ -4,38 +4,26 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateAbsensiTable extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('absensi', function (Blueprint $table) {
             $table->id();
-
-            $table->foreignId('sesi_absen_id')
-                ->constrained('sesi_absen')
-                ->cascadeOnDelete();
-
-            $table->foreignId('murid_id')
-                ->constrained('users')
-                ->cascadeOnDelete();
-
-            $table->enum('status', ['hadir', 'izin', 'alpha']);
+            $table->foreignId('sesi_absen_id')->constrained('sesi_absen');
+            $table->foreignId('murid_id')->constrained('users');
+            $table->enum('status', ['hadir','izin','sakit','alpha']);
             $table->timestamp('waktu_scan');
+            $table->decimal('latitude',10,7)->nullable();
+            $table->decimal('longitude',10,7)->nullable();
+            $table->timestamps();
 
-            $table->timestamp('created_at')->useCurrent();
-
-            $table->unique(['sesi_absen_id', 'murid_id']);
+            $table->unique(['sesi_absen_id','murid_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('absensi');
     }
-};
+}
