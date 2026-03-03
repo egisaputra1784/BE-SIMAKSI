@@ -25,7 +25,6 @@ class ApiControllers extends Controller
 
         $tokenQr = Str::random(8);
 
-        // bikin sesi dulu (ini yang tadi ilang)
         $sesi = SesiAbsen::create([
             'jadwal_id' => $jadwal->id,
             'tanggal' => now()->toDateString(),
@@ -55,15 +54,15 @@ class ApiControllers extends Controller
     public function scan(Request $request)
     {
         $request->validate([
-            'sesi_id' => 'required|exists:sesi_absen,id',
             'token' => 'required|string'
         ]);
 
         $user = JWTAuth::parseToken()->authenticate();
-        $sesi = SesiAbsen::findOrFail($request->sesi_id);
 
-        if ($sesi->token_qr !== $request->token) {
-            return response()->json(['message' => 'QR salah'], 400);
+        $sesi = SesiAbsen::where('token_qr', $request->token)->first();
+
+        if (!$sesi) {
+            return response()->json(['message' => 'QR tidak valid'], 400);
         }
 
         if (now()->greaterThan($sesi->expired_at)) {
@@ -91,7 +90,6 @@ class ApiControllers extends Controller
             'data' => $absen
         ]);
     }
-
 
     /**
      * Semua jadwal
