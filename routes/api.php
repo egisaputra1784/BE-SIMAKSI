@@ -6,29 +6,55 @@ use App\Http\Controllers\Api\ApiControllers;
 
 /*
 |--------------------------------------------------------------------------
-| AUTH
+| AUTH ROUTES
 |--------------------------------------------------------------------------
 */
+
+// Login
 Route::post('/login', [AuthControllers::class, 'login']);
 
+
+/*
+|--------------------------------------------------------------------------
+| PROTECTED ROUTES (JWT)
+|--------------------------------------------------------------------------
+*/
 Route::middleware('auth:api')->group(function () {
 
+    // Logout
     Route::post('/logout', [AuthControllers::class, 'logout']);
 
-    //================== GET DATA ================
-    
-    Route::get('/jadwal', [ApiControllers::class,'jadwal']);
+    /*
+    |--------------------------------------------------------------------------
+    | DATA UMUM
+    |--------------------------------------------------------------------------
+    */
 
-    // GET sesi absen aktif (QR belum expired)
-    Route::get('/sesi-absen/aktif', [ApiControllers::class,'sesiAbsenAktif']);
+    // Semua jadwal
+    Route::get('/jadwal', [ApiControllers::class, 'jadwal']);
 
-    // GET absensi murid sendiri
-    Route::get('/absensi/murid', [ApiControllers::class,'absensiMurid']);
-    // ================= ABSENSI =================
-    
-    // Buka sesi absen (guru)
+    // Sesi absen aktif (belum expired)
+    Route::get('/sesi-absen/aktif', [ApiControllers::class, 'sesiAbsenAktif']);
+
+    // Riwayat absensi murid sendiri
+    Route::get('/absensi/murid', [ApiControllers::class, 'absensiMurid']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | ABSENSI
+    |--------------------------------------------------------------------------
+    */
+
+    // Guru buka sesi
     Route::post('/jadwal/{jadwal}/buka-absen', [ApiControllers::class, 'bukaAbsen']);
 
-    // Scan QR (murid)
+    // Murid scan QR
     Route::post('/absensi/scan', [ApiControllers::class, 'scan']);
+
+    // Manual QR (insert only)
+    Route::post('/absensi/manual-qr', [ApiControllers::class, 'absenManualQR']);
+
+    // Manual utama (insert / update massal)
+    Route::post('/absensi/manual', [ApiControllers::class, 'absenManual']);
 });
