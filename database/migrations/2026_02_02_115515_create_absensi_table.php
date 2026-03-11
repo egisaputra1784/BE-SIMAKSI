@@ -14,8 +14,6 @@ class CreateAbsensiTable extends Migration
             $table->foreignId('murid_id')->constrained('users');
             $table->enum('status', ['hadir','izin','sakit','alpha']);
             $table->timestamp('waktu_scan');
-            $table->decimal('latitude',10,7)->nullable();
-            $table->decimal('longitude',10,7)->nullable();
             $table->timestamps();
 
             $table->unique(['sesi_absen_id','murid_id']);

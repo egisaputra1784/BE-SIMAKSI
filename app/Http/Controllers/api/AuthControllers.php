@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AnggotaKelas;
+use App\Models\User;
 use Illuminate\Http\Request;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 
 class AuthControllers extends Controller
@@ -20,8 +24,7 @@ class AuthControllers extends Controller
         $login = $request->login;
         $password = $request->password;
 
-        // cari user berdasarkan email / nip / nisn
-        $user = \App\Models\User::where('email', $login)
+        $user = User::where('email', $login)
             ->orWhere('nip', $login)
             ->orWhere('nisn', $login)
             ->first();
@@ -37,9 +40,59 @@ class AuthControllers extends Controller
             return response()->json(['message' => 'Password salah'], 401);
         }
 
+        // =====================
+        // TAMBAHAN DATA KELAS
+        // =====================
+
+        $kelasData = null;
+
+        if ($user->role === 'murid') {
+
+            $anggota = AnggotaKelas::with([
+                'kelas.tahunAjar',
+                'kelas.wali'
+            ])
+                ->where('murid_id', $user->id)
+                ->first();
+
+            if ($anggota) {
+                $kelasData = $anggota->kelas;
+            }
+        }
+
         return response()->json([
             'token' => $token,
-            'user' => $user
+            'user' => $user,
+            'kelas' => $kelasData
+        ]);
+    }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:6|confirmed'
+        ]);
+
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if (!$user) {
+            return response()->json([
+                'message' => 'User tidak terautentikasi'
+            ], 401);
+        }
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'Password lama salah'
+            ], 400);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Password berhasil diubah'
         ]);
     }
 

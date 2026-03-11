@@ -10,14 +10,12 @@ class CreateSesiAbsenTable extends Migration
     {
         Schema::create('sesi_absen', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('jadwal_id')->nullable()->constrained('jadwal'); 
+            $table->foreignId('jadwal_id')->nullable()->constrained('jadwal');
             $table->date('tanggal');
-            $table->string('token_qr');
-            $table->timestamp('expired_at');
+            $table->string('token_qr')->index();
             $table->enum('tipe', ['masuk','mapel','pulang']);
             $table->foreignId('dibuka_oleh')->constrained('users');
             $table->timestamp('dibuka_pada');
-            $table->timestamp('ditutup_pada')->nullable();
             $table->timestamps();
         });
     }
