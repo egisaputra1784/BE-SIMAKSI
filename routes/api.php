@@ -45,6 +45,7 @@ Route::middleware('auth:api')->group(function () {
     // murid dalam sesi
     Route::get('/sesi/{id}/murid', [ApiControllers::class, 'getMuridSesi']);
 
+
     /*
     |--------------------------------------------------------------------------
     | REKAP
@@ -53,12 +54,33 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/rekap/siswa', [RekapController::class, 'siswaRekap']);
 
+
     /*
     |--------------------------------------------------------------------------
-    | DATA
+    | DATA UMUM
     |--------------------------------------------------------------------------
     */
 
     Route::get('/tahun-ajar', [ApiControllers::class, 'tahunAjar']);
+
     Route::get('/kelas', [ApiControllers::class, 'kelas']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PENILAIAN SISWA
+    |--------------------------------------------------------------------------
+    */
+
+    // kategori penilaian
+    Route::get('/assessment/categories', [ApiControllers::class, 'assessmentCategories']);
+
+    // daftar murid dalam kelas
+    Route::get('/kelas/{kelasId}/murid', [ApiControllers::class, 'muridKelas']);
+
+    // simpan penilaian
+    Route::post('/assessment/simpan', [ApiControllers::class, 'simpanAssessment']);
+
+    // lihat nilai murid
+    Route::get('/assessment/murid/{muridId}', [ApiControllers::class, 'nilaiMurid']);
 });

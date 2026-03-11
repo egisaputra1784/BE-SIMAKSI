@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             MapelSeeder::class,
             KelasSeeder::class,
             JadwalSeeder::class,
+            AssessmentCategorySeeder::class,
         ]);
     }
 }

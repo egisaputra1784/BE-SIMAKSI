@@ -16,7 +16,7 @@ class Kelas extends Model
 
     public function wali()
     {
-        return $this->belongsTo(User::class, 'id');
+        return $this->belongsTo(User::class, 'wali_guru_id');
     }
 
     public function anggota()
