@@ -149,58 +149,6 @@ class ApiControllers extends Controller
         ]);
     }
 
-
-    public function absenManualQR(Request $request)
-    {
-        $request->validate([
-            'sesi_id' => 'required|exists:sesi_absen,id',
-            'murid_id' => 'required|exists:users,id',
-            'status'  => 'required|in:hadir,izin,sakit,alpha'
-        ]);
-
-        $guru = JWTAuth::parseToken()->authenticate();
-
-        if ($guru->role !== 'guru') {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
-        $sesi = SesiAbsen::with('jadwal')->findOrFail($request->sesi_id);
-
-        if ($guru->id !== $sesi->dibuka_oleh) {
-            return response()->json(['message' => 'Bukan sesi Anda'], 403);
-        }
-
-        $batasAbsen = Carbon::parse(
-            $sesi->tanggal . ' ' . $sesi->jadwal->jam_selesai
-        )->addMinutes(10);
-
-        if (now()->gt($batasAbsen)) {
-            return response()->json(['message' => 'Sesi sudah berakhir'], 422);
-        }
-
-        $exists = Absensi::where([
-            'sesi_absen_id' => $sesi->id,
-            'murid_id'      => $request->murid_id
-        ])->exists();
-
-        if ($exists) {
-            return response()->json(['message' => 'Sudah diinput'], 400);
-        }
-
-        $absen = Absensi::create([
-            'sesi_absen_id' => $sesi->id,
-            'murid_id'      => $request->murid_id,
-            'status'        => $request->status,
-            'waktu_scan'    => now()
-        ]);
-
-        return response()->json([
-            'message' => 'Absensi manual berhasil',
-            'data'    => $absen
-        ]);
-    }
-
-
     public function absenManual(Request $request)
     {
         $request->validate([
@@ -384,12 +332,12 @@ class ApiControllers extends Controller
     public function simpanAssessment(Request $request)
     {
         $request->validate([
+            'jadwal_id' => 'required|exists:jadwal,id',
             'murid_id' => 'required|exists:users,id',
-            'kelas_id' => 'required|exists:kelas,id',
-            'mapel_id' => 'required|exists:mapel,id',
             'scores'   => 'required|array',
             'scores.*.category_id' => 'required|exists:assessment_categories,id',
-            'scores.*.score' => 'required|integer|min:1|max:5'
+            'scores.*.score' => 'required|integer|min:1|max:5',
+            'catatan' => 'nullable|string'
         ]);
 
         $guru = JWTAuth::parseToken()->authenticate();
@@ -402,14 +350,56 @@ class ApiControllers extends Controller
 
         try {
 
+            $jadwal = Jadwal::findOrFail($request->jadwal_id);
+
+            /*
+        ======================
+        VALIDASI GURU
+        ======================
+        */
+
+            if ($jadwal->guru_id !== $guru->id) {
+                return response()->json([
+                    'message' => 'Bukan jadwal Anda'
+                ], 403);
+            }
+
+            /*
+        ======================
+        VALIDASI SISWA
+        ======================
+        */
+
+            $isAnggota = AnggotaKelas::where('kelas_id', $jadwal->kelas_id)
+                ->where('murid_id', $request->murid_id)
+                ->exists();
+
+            if (!$isAnggota) {
+                return response()->json([
+                    'message' => 'Murid bukan anggota kelas'
+                ], 403);
+            }
+
+            /*
+        ======================
+        SIMPAN ASSESSMENT
+        ======================
+        */
+
             $assessment = Assessment::create([
                 'guru_id'  => $guru->id,
                 'murid_id' => $request->murid_id,
-                'kelas_id' => $request->kelas_id,
-                'mapel_id' => $request->mapel_id,
+                'kelas_id' => $jadwal->kelas_id,
+                'mapel_id' => $jadwal->mapel_id,
                 'tanggal'  => now(),
                 'catatan'  => $request->catatan
             ]);
+
+            /*
+        ======================
+        SIMPAN DETAIL NILAI
+        ======================
+        */
 
             foreach ($request->scores as $score) {
 
@@ -453,7 +443,7 @@ class ApiControllers extends Controller
             ->where('murid_id', $muridId)
             ->where('guru_id', $guru->id);
 
-        if ($request->start_date && $request->end_date) {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('tanggal', [
                 $request->start_date,
                 $request->end_date
@@ -510,6 +500,220 @@ class ApiControllers extends Controller
             'data' => $data,
             'rata_per_kategori' => $avgPerKategori,
             'rata_total' => round($avgTotal, 2)
+        ]);
+    }
+
+    public function jadwalHariIni()
+    {
+        $guru = JWTAuth::parseToken()->authenticate();
+
+        if ($guru->role !== 'guru') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $hari = strtolower(now()->locale('id')->dayName);
+
+        $jadwal = Jadwal::with(['kelas', 'mapel'])
+            ->where('guru_id', $guru->id)
+            ->where('hari', $hari)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        if ($jadwal->isEmpty()) {
+            return response()->json([
+                'message' => 'Tidak ada jadwal hari ini'
+            ]);
+        }
+
+        return response()->json([
+            'hari' => $hari,
+            'data' => $jadwal->map(function ($j) {
+
+                $sesi = SesiAbsen::where('jadwal_id', $j->id)
+                    ->where('tanggal', now()->toDateString())
+                    ->first();
+
+                return [
+                    'jadwal_id' => $j->id,
+                    'kelas_id' => $j->kelas_id,
+                    'kelas' => $j->kelas->nama_kelas,
+                    'mapel' => $j->mapel->nama_mapel,
+                    'jam_mulai' => $j->jam_mulai,
+                    'jam_selesai' => $j->jam_selesai,
+
+                    'sesi_dibuka' => $sesi ? true : false,
+                    'sesi_id' => $sesi->id ?? null,
+                    'tipe_sesi' => $sesi->tipe ?? null,
+                    'token_qr' => $sesi->token_qr ?? null
+                ];
+            })
+        ]);
+    }
+
+    public function jadwalMuridHariIni()
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if ($user->role !== 'murid') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $hari = strtolower(now()->locale('id')->dayName);
+
+        /*
+    ======================
+    AMBIL KELAS MURID
+    ======================
+    */
+
+        $kelas = AnggotaKelas::where('murid_id', $user->id)->first();
+
+        if (!$kelas) {
+            return response()->json([
+                'message' => 'Murid belum memiliki kelas'
+            ], 404);
+        }
+
+        /*
+    ======================
+    AMBIL JADWAL HARI INI
+    ======================
+    */
+
+        $jadwal = Jadwal::with(['kelas', 'mapel', 'guru'])
+            ->where('kelas_id', $kelas->kelas_id)
+            ->where('hari', $hari)
+            ->orderBy('jam_mulai')
+            ->get();
+
+        if ($jadwal->isEmpty()) {
+            return response()->json([
+                'message' => 'Tidak ada jadwal hari ini'
+            ]);
+        }
+
+        return response()->json([
+            'hari' => $hari,
+            'data' => $jadwal->map(function ($j) use ($user) {
+
+                /*
+            ======================
+            CEK SESI ABSEN
+            ======================
+            */
+
+                $sesi = SesiAbsen::where('jadwal_id', $j->id)
+                    ->where('tanggal', now()->toDateString())
+                    ->first();
+
+                /*
+            ======================
+            CEK STATUS ABSEN
+            ======================
+            */
+
+                $absen = null;
+
+                if ($sesi) {
+                    $absen = Absensi::where([
+                        'sesi_absen_id' => $sesi->id,
+                        'murid_id' => $user->id
+                    ])->first();
+                }
+
+                return [
+                    'jadwal_id' => $j->id,
+                    'kelas' => $j->kelas->nama_kelas,
+                    'mapel' => $j->mapel->nama_mapel,
+                    'guru' => $j->guru->name,
+
+
+                    'jam_mulai' => $j->jam_mulai,
+                    'jam_selesai' => $j->jam_selesai,
+
+                    'sesi_dibuka' => $sesi ? true : false,
+                    'sesi_id' => $sesi->id ?? null,
+
+                    'sudah_absen' => $absen ? true : false,
+                    'status_absen' => $absen->status ?? null
+                ];
+            })
+        ]);
+    }
+
+    public function jadwalMingguMurid()
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if ($user->role !== 'murid') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Ambil kelas murid
+        $anggota = AnggotaKelas::where('murid_id', $user->id)->first();
+
+        if (!$anggota) {
+            return response()->json([
+                'message' => 'Murid belum memiliki kelas'
+            ], 404);
+        }
+
+        $kelasId = $anggota->kelas_id;
+
+        // Hari ini sampai 6 hari ke depan
+        $startDate = Carbon::now();
+        $endDate   = Carbon::now()->addDays(6);
+
+        $daysOfWeek = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+
+        // Ambil semua jadwal kelas
+        $jadwals = Jadwal::with(['kelas', 'mapel', 'guru'])
+            ->where('kelas_id', $kelasId)
+            ->get();
+
+        $result = [];
+
+        for ($i = 0; $i <= 6; $i++) {
+            $date = Carbon::now()->addDays($i);
+            $hari = strtolower($date->locale('id')->dayName);
+
+            $jadwalHari = $jadwals->filter(fn($j) => $j->hari === $hari)
+                ->map(function ($j) use ($date, $user) {
+                    $sesi = SesiAbsen::where('jadwal_id', $j->id)
+                        ->where('tanggal', $date->toDateString())
+                        ->first();
+
+                    $absen = null;
+                    if ($sesi) {
+                        $absen = Absensi::where([
+                            'sesi_absen_id' => $sesi->id,
+                            'murid_id' => $user->id
+                        ])->first();
+                    }
+
+                    return [
+                        'jadwal_id' => $j->id,
+                        'kelas' => $j->kelas->nama_kelas,
+                        'mapel' => $j->mapel->nama_mapel,
+                        'guru' => $j->guru->name,
+                        'jam_mulai' => $j->jam_mulai,
+                        'jam_selesai' => $j->jam_selesai,
+                        'sesi_dibuka' => $sesi ? true : false,
+                        'sesi_id' => $sesi->id ?? null,
+                        'sudah_absen' => $absen ? true : false,
+                        'status_absen' => $absen->status ?? null
+                    ];
+                })->values();
+
+            $result[] = [
+                'tanggal' => $date->toDateString(),
+                'hari' => $hari,
+                'jadwal' => $jadwalHari
+            ];
+        }
+
+        return response()->json([
+            'data' => $result
         ]);
     }
 }

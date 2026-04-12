@@ -13,12 +13,12 @@ class JadwalSeeder extends Seeder
 
         $shift = [
             [
-                'jam_mulai' => '07:00:00',
-                'jam_selesai' => '11:00:00'
+                'jam_mulai' => '21:00:00',
+                'jam_selesai' => '23:00:00'
             ],
             [
-                'jam_mulai' => '13:00:00',
-                'jam_selesai' => '16:00:00'
+                'jam_mulai' => '00:10:00',
+                'jam_selesai' => '21:00:00'
             ]
         ];
 

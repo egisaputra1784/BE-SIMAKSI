@@ -43,51 +43,10 @@
                             </tr>
                         </thead>
 
-                        <tbody>
-
-                            {{-- DUMMY DATA --}}
-                            @php
-                                $gurus = [
-                                    ['name' => 'Pak Budi', 'email' => 'budi@school.com', 'nip' => '1989001'],
-                                    ['name' => 'Bu Sinta', 'email' => 'sinta@school.com', 'nip' => '1989002'],
-                                    ['name' => 'Pak Andi', 'email' => 'andi@school.com', 'nip' => '1989003'],
-                                    ['name' => 'Bu Rina', 'email' => 'rina@school.com', 'nip' => '1989004'],
-                                ];
-                            @endphp
-
-                            @foreach ($gurus as $i => $guru)
-                                <tr>
-                                    <td>{{ $i + 1 }}</td>
-
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="rounded-circle bg-success text-white d-flex justify-content-center align-items-center"
-                                                style="width:35px;height:35px;">
-                                                <i class="mdi mdi-account-tie"></i>
-                                            </div>
-                                            <span class="fw-semibold">{{ $guru['name'] }}</span>
-                                        </div>
-                                    </td>
-
-                                    <td>{{ $guru['email'] }}</td>
-                                    <td>{{ $guru['nip'] }}</td>
-
-                                    <td>
-                                        <span class="badge bg-success">guru</span>
-                                    </td>
-
-                                    <td class="text-center">
-                                        <a href="/guru/form" class="btn btn-sm btn-warning">
-                                            <i class="mdi mdi-pencil"></i>
-                                        </a>
-
-                                        <a href="#" class="btn btn-sm btn-danger">
-                                            <i class="mdi mdi-delete"></i>
-                                        </a>
-                                    </td>
-                                </tr>
-                            @endforeach
-
+                        <tbody id="guru-table">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">Loading...</td>
+                            </tr>
                         </tbody>
 
                     </table>
@@ -98,3 +57,62 @@
 
     </div>
 @endsection
+
+
+@push('scripts')
+    <script>
+        let allGuru = []
+
+        function loadGuru() {
+            fetch('/guru/data')
+                .then(res => res.json())
+                .then(data => {
+                    allGuru = data
+                    renderData(data)
+                })
+        }
+
+        function renderData(data) {
+            let html = ''
+
+            if (data.length === 0) {
+                html = `<tr><td colspan="6" class="text-center">Tidak ada data</td></tr>`
+            } else {
+                data.forEach((g, i) => {
+                    html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${g.name}</td>
+                <td>${g.email}</td>
+                <td>${g.nip ?? '-'}</td>
+                <td><span class="badge bg-success">guru</span></td>
+                <td class="text-center">
+                    <button onclick="editGuru(${g.id})" class="btn btn-warning btn-sm">Edit</button>
+                    <button onclick="deleteGuru(${g.id})" class="btn btn-danger btn-sm">Hapus</button>
+                </td>
+            </tr>
+            `
+                })
+            }
+
+            document.getElementById('guru-table').innerHTML = html
+        }
+
+        function editGuru(id) {
+            window.location.href = '/guru/form?id=' + id
+        }
+
+        function deleteGuru(id) {
+            if (!confirm('Yakin hapus?')) return
+
+            fetch('/guru/' + id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            }).then(() => loadGuru())
+        }
+
+        loadGuru()
+    </script>
+@endpush

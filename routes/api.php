@@ -65,6 +65,20 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/kelas', [ApiControllers::class, 'kelas']);
 
+    /*
+|--------------------------------------------------------------------------
+| JADWAL
+|--------------------------------------------------------------------------
+*/
+
+    // jadwal guru hari ini
+    Route::get('/jadwal/guru/hari-ini', [ApiControllers::class, 'jadwalHariIni']);
+
+    // jadwal murid hari ini
+    Route::get('/jadwal/murid/hari-ini', [ApiControllers::class, 'jadwalMuridHariIni']);
+
+    Route::get('/murid/jadwal-minggu', [ApiControllers::class, 'jadwalMingguMurid']);
+
 
     /*
     |--------------------------------------------------------------------------

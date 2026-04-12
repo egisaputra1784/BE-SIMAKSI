@@ -7,14 +7,14 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="fw-bold mb-0">
-                    {{ request('id') ? 'Edit Guru' : 'Tambah Guru' }}
+                    {{ request('id') ? 'Edit Murid' : 'Tambah Murid' }}
                 </h3>
                 <small class="text-muted">
-                    {{ request('id') ? 'Edit akun guru' : 'Buat akun guru baru' }}
+                    {{ request('id') ? 'Edit akun murid' : 'Buat akun murid baru' }}
                 </small>
             </div>
 
-            <a href="/guru" class="btn btn-light">
+            <a href="/murid" class="btn btn-light">
                 <i class="mdi mdi-arrow-left"></i> Kembali
             </a>
         </div>
@@ -25,7 +25,7 @@
                 <div class="card shadow-sm">
                     <div class="card-body">
 
-                        <form id="form-guru">
+                        <form id="form-murid">
                             @csrf
 
                             {{-- Nama --}}
@@ -40,10 +40,10 @@
                                 <input type="email" name="email" class="form-control" required>
                             </div>
 
-                            {{-- NIP --}}
+                            {{-- NISN --}}
                             <div class="mb-3">
-                                <label class="form-label">NIP</label>
-                                <input type="text" name="nip" class="form-control" required>
+                                <label class="form-label">NISN</label>
+                                <input type="text" name="nisn" class="form-control" required>
                             </div>
 
                             {{-- Password --}}
@@ -58,14 +58,14 @@
                                 <input type="password" id="confirm" class="form-control">
                             </div>
 
-                            <input type="hidden" name="role" value="guru">
+                            <input type="hidden" name="role" value="murid">
 
                             <div class="d-flex gap-2">
-                                <button type="submit" class="btn btn-success">
+                                <button type="submit" class="btn btn-info">
                                     <i class="mdi mdi-content-save"></i> Simpan
                                 </button>
 
-                                <a href="/guru" class="btn btn-secondary">
+                                <a href="/murid" class="btn btn-secondary">
                                     Batal
                                 </a>
                             </div>
@@ -89,22 +89,22 @@
 
         // EDIT MODE
         if (id) {
-            fetch('/guru/' + id)
+            fetch('/murid/' + id)
                 .then(res => res.json())
                 .then(data => {
                     document.querySelector('[name=name]').value = data.name
                     document.querySelector('[name=email]').value = data.email
-                    document.querySelector('[name=nip]').value = data.nip
+                    document.querySelector('[name=nisn]').value = data.nisn
                 })
         }
 
-        document.getElementById('form-guru').addEventListener('submit', function(e) {
+        document.getElementById('form-murid').addEventListener('submit', function(e) {
             e.preventDefault()
 
             const password = document.querySelector('[name=password]').value
             const confirm = document.getElementById('confirm').value
 
-            // validasi password cuma kalau isi
+            // validasi password kalau diisi
             if (password && password !== confirm) {
                 alert('Password tidak sama')
                 return
@@ -112,10 +112,10 @@
 
             const formData = new FormData(this)
 
-            let url = '/guru'
+            let url = '/murid'
 
             if (id) {
-                url = '/guru/' + id
+                url = '/murid/' + id
                 formData.append('_method', 'PUT')
             }
 
@@ -129,8 +129,8 @@
                 .then(res => res.json())
                 .then(res => {
                     if (res.success) {
-                        alert(id ? 'Guru diupdate' : 'Guru ditambah')
-                        window.location.href = '/guru'
+                        alert(id ? 'Murid diupdate' : 'Murid ditambah')
+                        window.location.href = '/murid'
                     }
                 })
         })

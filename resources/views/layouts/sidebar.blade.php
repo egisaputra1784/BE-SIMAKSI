@@ -41,7 +41,7 @@
                 <ul class="nav flex-column sub-menu">
                     <li><a class="nav-link" href="/admin"><i class="mdi mdi-shield-account me-2"></i> Admin</a></li>
                     <li><a class="nav-link" href="/guru"><i class="mdi mdi-account-tie me-2"></i> Guru</a></li>
-                    <li><a class="nav-link" href="#"><i class="mdi mdi-school me-2"></i> Murid</a></li>
+                    <li><a class="nav-link" href="/murid"><i class="mdi mdi-school me-2"></i> Murid</a></li>
                 </ul>
             </div>
         </li>
@@ -51,10 +51,10 @@
         <li class="pt-3 pb-1">
             <span class="nav-item-head">Akademik</span>
         </li>
-        
+
 
         <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="/tahun-ajar">
                 <i class="mdi mdi-calendar-clock menu-icon"></i>
                 <span class="menu-title">Tahun Ajar</span>
             </a>
