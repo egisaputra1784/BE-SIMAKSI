@@ -61,14 +61,14 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="/kelas">
                 <i class="mdi mdi-google-classroom menu-icon"></i>
                 <span class="menu-title">Kelas</span>
             </a>
         </li>
 
         <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="/anggota-kelas">
                 <i class="mdi mdi-account-multiple-plus menu-icon"></i>
                 <span class="menu-title">Anggota Kelas</span>
             </a>

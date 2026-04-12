@@ -2,7 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AnggotaKelasController;
 use App\Http\Controllers\GuruController;
+use App\Http\Controllers\KelasController;
 use App\Http\Controllers\MuridController;
 use App\Http\Controllers\TahunAjarController;
 
@@ -61,3 +63,24 @@ Route::get('/tahun-ajar/{id}', [TahunAjarController::class, 'show']);
 Route::put('/tahun-ajar/{id}', [TahunAjarController::class, 'update']);
 Route::delete('/tahun-ajar/{id}', [TahunAjarController::class, 'destroy']);
 
+Route::get('/kelas', [KelasController::class, 'index']);
+Route::get('/kelas/data', [KelasController::class, 'data']);
+Route::post('/kelas', [KelasController::class, 'store']);
+
+Route::get('/kelas/form', function () {
+    return view('kelas.form');
+});
+
+Route::get('/kelas/{id}', [KelasController::class, 'show']);
+Route::put('/kelas/{id}', [KelasController::class, 'update']);
+Route::delete('/kelas/{id}', [KelasController::class, 'destroy']);
+
+Route::get('/anggota-kelas', [AnggotaKelasController::class, 'index']);
+Route::get('/anggota-kelas/data', [AnggotaKelasController::class, 'data']);
+Route::post('/anggota-kelas', [AnggotaKelasController::class, 'store']);
+
+Route::get('/anggota-kelas/form', function () {
+    return view('anggota-kelas.form');
+});
+
+Route::delete('/anggota-kelas/{id}', [AnggotaKelasController::class, 'destroy']);
