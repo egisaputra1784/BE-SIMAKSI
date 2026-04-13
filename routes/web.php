@@ -4,7 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AnggotaKelasController;
 use App\Http\Controllers\GuruController;
+use App\Http\Controllers\GuruMapelController;
 use App\Http\Controllers\KelasController;
+use App\Http\Controllers\MapelController;
 use App\Http\Controllers\MuridController;
 use App\Http\Controllers\TahunAjarController;
 
@@ -84,3 +86,28 @@ Route::get('/anggota-kelas/form', function () {
 });
 
 Route::delete('/anggota-kelas/{id}', [AnggotaKelasController::class, 'destroy']);
+
+
+Route::get('/mapel', [MapelController::class, 'index']);
+Route::get('/mapel/data', [MapelController::class, 'data']);
+Route::post('/mapel', [MapelController::class, 'store']);
+
+Route::get('/mapel/form', function () {
+    return view('mapel.form');
+});
+
+Route::get('/mapel/{id}', [MapelController::class, 'show']);
+Route::put('/mapel/{id}', [MapelController::class, 'update']);
+Route::delete('/mapel/{id}', [MapelController::class, 'destroy']);
+
+Route::get('/guru-mapel', [GuruMapelController::class, 'index']);
+Route::get('/guru-mapel/data', [GuruMapelController::class, 'data']);
+Route::post('/guru-mapel', [GuruMapelController::class, 'store']);
+
+Route::get('/guru-mapel/form', function () {
+    return view('guru-mapel.form');
+});
+
+Route::get('/guru-mapel/{id}', [GuruMapelController::class, 'show']);
+Route::put('/guru-mapel/{id}', [GuruMapelController::class, 'update']);
+Route::delete('/guru-mapel/{id}', [GuruMapelController::class, 'destroy']);

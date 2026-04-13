@@ -75,14 +75,14 @@
         </li>
 
         <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="/mapel">
                 <i class="mdi mdi-book-outline menu-icon"></i>
                 <span class="menu-title">Mata Pelajaran</span>
             </a>
         </li>
 
         <li class="nav-item">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="/guru-mapel">
                 <i class="mdi mdi-book-education menu-icon"></i>
                 <span class="menu-title">Guru Mapel</span>
             </a>

@@ -64,6 +64,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Absensi::class, 'murid_id');
     }
 
+    public function guruMapel()
+    {
+        return $this->hasMany(GuruMapel::class, 'guru_id');
+    }
+
     public function getJWTIdentifier()
     {
         return $this->getKey();
