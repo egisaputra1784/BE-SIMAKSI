@@ -95,32 +95,22 @@
             </a>
         </li>
 
-
-        <!-- ================= ABSENSI ================= -->
-        <li class="pt-3 pb-1">
-            <span class="nav-item-head">Absensi</span>
-        </li>
-
         <li class="nav-item">
-            <a class="nav-link" href="#">
-                <i class="mdi mdi-qrcode-scan menu-icon"></i>
-                <span class="menu-title">Sesi Absen (QR)</span>
+            <a class="nav-link" href="/point-rules">
+                <i class="mdi mdi-timetable menu-icon"></i>
+                <span class="menu-title">Peraturan Siswa</span>
             </a>
         </li>
 
+
         <li class="nav-item">
-            <a class="nav-link" href="#">
-                <i class="mdi mdi-clipboard-check-outline menu-icon"></i>
-                <span class="menu-title">Rekap Absensi</span>
+            <a class="nav-link" href="/flexibility-items">
+                <i class="mdi mdi-timetable menu-icon"></i>
+                <span class="menu-title">Market</span>
             </a>
         </li>
 
-        <li class="nav-item">
-            <a class="nav-link" href="#">
-                <i class="mdi mdi-note-text-outline menu-icon"></i>
-                <span class="menu-title">Izin Siswa</span>
-            </a>
-        </li>
+
 
 
 

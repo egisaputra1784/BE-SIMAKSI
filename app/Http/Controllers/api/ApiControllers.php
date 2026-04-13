@@ -12,6 +12,8 @@ use App\Models\SesiAbsen;
 use App\Models\Jadwal;
 use App\Models\TahunAjar;
 use Illuminate\Http\Request;
+use App\Models\PointLedger;
+use App\Models\PointRule;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -109,14 +111,11 @@ class ApiControllers extends Controller
 
         $jadwal = $sesi->jadwal;
 
-        $batasAbsen = Carbon::parse(
-            $sesi->tanggal . ' ' . $jadwal->jam_selesai
-        )->addMinutes(10);
+        $batasAbsen = Carbon::parse($sesi->tanggal . ' ' . $jadwal->jam_selesai)
+            ->addMinutes(10);
 
         if (now()->gt($batasAbsen)) {
-            return response()->json([
-                'message' => 'Waktu absen sudah habis'
-            ], 400);
+            return response()->json(['message' => 'Waktu absen sudah habis'], 400);
         }
 
         $isAnggota = AnggotaKelas::where('kelas_id', $jadwal->kelas_id)
@@ -136,6 +135,9 @@ class ApiControllers extends Controller
             return response()->json(['message' => 'Sudah absen'], 400);
         }
 
+        // =========================
+        // CREATE ABSENSI
+        // =========================
         $absen = Absensi::create([
             'sesi_absen_id' => $sesi->id,
             'murid_id'      => $user->id,
@@ -143,9 +145,89 @@ class ApiControllers extends Controller
             'waktu_scan'    => now()
         ]);
 
+        // =========================
+        // HITUNG TELAT / CEPAT
+        // =========================
+        $dibuka = Carbon::parse($sesi->dibuka_pada);
+        $scan   = Carbon::parse($absen->waktu_scan);
+
+        $lateMinutes = $dibuka->diffInMinutes($scan);
+
+        // =========================
+        // AMBIL RULE
+        // =========================
+        $rules = PointRule::where('target_role', 'murid')->get();
+
+        foreach ($rules as $rule) {
+
+            $limit = (int) $rule->condition_value;
+            $match = false;
+
+            // =========================
+            // LOGIC SIMPLE: CUT OFF MODEL
+            // =========================
+            if ($rule->condition_operator === '<') {
+                // tepat waktu (bonus)
+                if ($lateMinutes <= $limit) {
+                    $match = true;
+                }
+            }
+
+            if ($rule->condition_operator === '>') {
+                // telat (penalty)
+                if ($lateMinutes > $limit) {
+                    $match = true;
+                }
+            }
+
+            if ($rule->condition_operator === 'between') {
+                [$min, $max] = explode('-', $rule->condition_value);
+
+                if ($lateMinutes >= (int)$min && $lateMinutes <= (int)$max) {
+                    $match = true;
+                }
+            }
+
+            // =========================
+            // EXECUTE POINT
+            // =========================
+            if ($match) {
+
+                $type = $lateMinutes > $limit ? 'PENALTY' : 'EARN';
+
+                // =========================
+                // AMBIL SALDO TERAKHIR
+                // =========================
+                $lastBalance = PointLedger::where('user_id', $user->id)
+                    ->latest('id')
+                    ->value('current_balance') ?? 0;
+
+                // =========================
+                // HITUNG SALDO BARU
+                // =========================
+                $amount = $rule->point_modifier;
+
+                $newBalance = $lastBalance + $amount;
+
+                // =========================
+                // SIMPAN LEDGER
+                // =========================
+                PointLedger::create([
+                    'user_id' => $user->id,
+                    'transaction_type' => $type,
+                    'amount' => $amount,
+                    'current_balance' => $newBalance,
+                    'description' => $rule->rule_name . " ({$lateMinutes} menit)",
+                    'absensi_id' => $absen->id
+                ]);
+            }
+        }
+
         return response()->json([
-            'message' => 'Absen berhasil',
-            'data'    => $absen
+            'message' => 'Absen berhasil + point dihitung',
+            'data'    => $absen,
+            'late_minutes' => $lateMinutes,
+            'point' => $newBalance
         ]);
     }
 

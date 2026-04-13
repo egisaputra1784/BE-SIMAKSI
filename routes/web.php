@@ -3,11 +3,13 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AnggotaKelasController;
+use App\Http\Controllers\FlexibilityItemController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\GuruMapelController;
 use App\Http\Controllers\KelasController;
 use App\Http\Controllers\MapelController;
 use App\Http\Controllers\MuridController;
+use App\Http\Controllers\PointRuleController;
 use App\Http\Controllers\TahunAjarController;
 
 Route::get('/', function () {
@@ -111,3 +113,28 @@ Route::get('/guru-mapel/form', function () {
 Route::get('/guru-mapel/{id}', [GuruMapelController::class, 'show']);
 Route::put('/guru-mapel/{id}', [GuruMapelController::class, 'update']);
 Route::delete('/guru-mapel/{id}', [GuruMapelController::class, 'destroy']);
+
+
+Route::get('/point-rules', [PointRuleController::class, 'index']);
+Route::get('/point-rules/data', [PointRuleController::class, 'data']);
+Route::post('/point-rules', [PointRuleController::class, 'store']);
+
+Route::get('/point-rules/form', function () {
+    return view('point-rules.form');
+});
+
+Route::get('/point-rules/{id}', [PointRuleController::class, 'show']);
+Route::put('/point-rules/{id}', [PointRuleController::class, 'update']);
+Route::delete('/point-rules/{id}', [PointRuleController::class, 'destroy']);
+
+Route::get('/flexibility-items', [FlexibilityItemController::class, 'index']);
+Route::get('/flexibility-items/data', [FlexibilityItemController::class, 'data']);
+Route::post('/flexibility-items', [FlexibilityItemController::class, 'store']);
+
+Route::get('/flexibility-items/form', function () {
+    return view('flexibility-items.form');
+});
+
+Route::get('/flexibility-items/{id}', [FlexibilityItemController::class, 'show']);
+Route::put('/flexibility-items/{id}', [FlexibilityItemController::class, 'update']);
+Route::delete('/flexibility-items/{id}', [FlexibilityItemController::class, 'destroy']);

@@ -78,4 +78,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return [];
     }
+
+    public function pointLedgers()
+    {
+        return $this->hasMany(PointLedger::class);
+    }
+
+    public function tokens()
+    {
+        return $this->hasMany(UserToken::class);
+    }
 }
