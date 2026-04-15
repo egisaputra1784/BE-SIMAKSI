@@ -97,4 +97,20 @@ Route::middleware('auth:api')->group(function () {
 
     // lihat nilai murid
     Route::get('/assessment/murid/{muridId}', [ApiControllers::class, 'nilaiMurid']);
+
+
+    /*
+|--------------------------------------------------------------------------
+| MARKETPLACE
+|--------------------------------------------------------------------------
+*/
+
+    Route::get('/marketplace/items', [ApiControllers::class, 'getItems']);
+    Route::post('/marketplace/buy', [ApiControllers::class, 'buyToken']);
+    Route::get('/marketplace/tokens', [ApiControllers::class, 'myTokens']);
+
+    // POINT SYSTEM
+    Route::get('/point/me', [ApiControllers::class, 'myPoint']);
+    Route::get('/point/history', [ApiControllers::class, 'pointHistory']);
+    Route::get('/leaderboard', [ApiControllers::class, 'leaderboard']);
 });

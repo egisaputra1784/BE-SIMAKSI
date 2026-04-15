@@ -8,12 +8,15 @@ use App\Models\AnggotaKelas;
 use App\Models\Assessment;
 use App\Models\AssessmentCategory;
 use App\Models\AssessmentDetail;
+use App\Models\FlexibilityItem;
 use App\Models\SesiAbsen;
 use App\Models\Jadwal;
 use App\Models\TahunAjar;
 use Illuminate\Http\Request;
 use App\Models\PointLedger;
 use App\Models\PointRule;
+use App\Models\User;
+use App\Models\UserToken;
 use Illuminate\Support\Str;
 use PHPOpenSourceSaver\JWTAuth\Facades\JWTAuth;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -220,6 +223,8 @@ class ApiControllers extends Controller
                     'description' => $rule->rule_name . " ({$lateMinutes} menit)",
                     'absensi_id' => $absen->id
                 ]);
+
+                break;
             }
         }
 
@@ -796,6 +801,180 @@ class ApiControllers extends Controller
 
         return response()->json([
             'data' => $result
+        ]);
+    }
+
+
+    public function buyToken(Request $request)
+    {
+        $request->validate([
+            'item_id' => 'required|exists:flexibility_items,id'
+        ]);
+
+        $user = JWTAuth::parseToken()->authenticate();
+
+        DB::beginTransaction();
+
+        try {
+
+            // ambil item
+            $item = FlexibilityItem::lockForUpdate()->findOrFail($request->item_id);
+
+            // =========================
+            // CEK SALDO
+            // =========================
+            $lastBalance = PointLedger::where('user_id', $user->id)
+                ->latest('id')
+                ->value('current_balance') ?? 0;
+
+            if ($lastBalance < $item->point_cost) {
+                return response()->json(['message' => 'Poin tidak cukup'], 400);
+            }
+
+            // =========================
+            // CEK STOCK LIMIT (PER BULAN)
+            // =========================
+            if ($item->stock_limit !== null) {
+
+                $totalBought = UserToken::where('user_id', $user->id)
+                    ->where('item_id', $item->id)
+                    ->whereBetween('created_at', [
+                        now()->startOfMonth(),
+                        now()->endOfMonth()
+                    ])
+                    ->count();
+
+                if ($totalBought >= $item->stock_limit) {
+                    return response()->json([
+                        'message' => 'Limit pembelian bulan ini sudah habis'
+                    ], 400);
+                }
+            }
+
+            // =========================
+            // HITUNG SALDO BARU
+            // =========================
+            $newBalance = $lastBalance - $item->point_cost;
+
+            // =========================
+            // LEDGER (SPEND)
+            // =========================
+            PointLedger::create([
+                'user_id' => $user->id,
+                'transaction_type' => 'SPEND',
+                'amount' => -$item->point_cost,
+                'current_balance' => $newBalance,
+                'description' => 'Beli token: ' . $item->item_name
+            ]);
+
+            // =========================
+            // SIMPAN TOKEN
+            // =========================
+            UserToken::create([
+                'user_id' => $user->id,
+                'item_id' => $item->id,
+                'status' => 'AVAILABLE'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Berhasil beli token',
+                'sisa_poin' => $newBalance
+            ]);
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Gagal membeli token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getItems()
+    {
+        return response()->json([
+            'data' => FlexibilityItem::all()
+        ]);
+    }
+
+    public function myTokens()
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $tokens = UserToken::with('item')
+            ->where('user_id', $user->id)
+            ->where('status', 'AVAILABLE')
+            ->get();
+
+        return response()->json([
+            'data' => $tokens
+        ]);
+    }
+
+    public function myPoint()
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $lastBalance = PointLedger::where('user_id', $user->id)
+            ->latest('id')
+            ->value('current_balance') ?? 0;
+
+        return response()->json([
+            'point' => $lastBalance
+        ]);
+    }
+
+    public function pointHistory()
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $history = PointLedger::where('user_id', $user->id)
+            ->latest()
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'type' => $item->transaction_type,
+                    'amount' => $item->amount,
+                    'balance' => $item->current_balance,
+                    'description' => $item->description,
+                    'date' => $item->created_at
+                ];
+            });
+
+        return response()->json([
+            'data' => $history
+        ]);
+    }
+
+
+    public function leaderboard()
+    {
+        $users = User::where('role', 'murid')
+            ->with(['pointLedgers' => function ($q) {
+                $q->latest()->limit(1);
+            }])
+            ->get()
+            ->map(function ($u) {
+                $last = $u->pointLedgers->first();
+
+                return [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'point' => $last->current_balance ?? 0
+                ];
+            })
+            ->sortByDesc('point')
+            ->values()
+            ->map(function ($u, $i) {
+                $u['rank'] = $i + 1;
+                return $u;
+            });
+
+        return response()->json([
+            'data' => $users
         ]);
     }
 }
