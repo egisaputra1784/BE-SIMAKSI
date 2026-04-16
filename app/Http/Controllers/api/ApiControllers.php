@@ -35,214 +35,123 @@ class ApiControllers extends Controller
         }
 
         $hari = strtolower(now()->locale('id')->dayName);
-        $jam  = now()->format('H:i:s');
+        $jam = now()->format('H:i:s');
 
-        $jadwals = Jadwal::where('guru_id', $guru->id)
+        $jadwal = Jadwal::where('guru_id', $guru->id)
             ->where('hari', $hari)
             ->orderBy('jam_mulai')
             ->get();
 
-        if ($jadwals->isEmpty()) {
-            return response()->json([
-                'message' => 'Tidak ada jadwal hari ini'
-            ], 404);
+        $aktif = $jadwal->first(fn($j) => $j->jam_mulai <= $jam && $j->jam_selesai >= $jam);
+
+        if (!$aktif) {
+            return response()->json(['message' => 'Tidak ada jadwal aktif'], 404);
         }
 
-        $jadwalAktif = $jadwals->first(function ($j) use ($jam) {
-            return $j->jam_mulai <= $jam && $j->jam_selesai >= $jam;
-        });
+        $tipe = $aktif->id === $jadwal->first()->id
+            ? 'masuk'
+            : ($aktif->id === $jadwal->last()->id ? 'pulang' : 'mapel');
 
-        if (!$jadwalAktif) {
-            return response()->json([
-                'message' => 'Tidak ada jadwal saat ini'
-            ], 404);
-        }
-
-        $first = $jadwals->first();
-        $last  = $jadwals->last();
-
-        if ($jadwalAktif->id === $first->id) {
-            $tipe = 'masuk';
-        } elseif ($jadwalAktif->id === $last->id) {
-            $tipe = 'pulang';
-        } else {
-            $tipe = 'mapel';
-        }
-
-        $tokenQr = Str::random(8);
+        $token = Str::random(8);
 
         $sesi = SesiAbsen::create([
-            'jadwal_id'   => $jadwalAktif->id,
-            'tanggal'     => now()->toDateString(),
-            'token_qr'    => $tokenQr,
-            'tipe'        => $tipe,
+            'jadwal_id' => $aktif->id,
+            'tanggal' => now()->toDateString(),
+            'token_qr' => $token,
+            'tipe' => $tipe,
             'dibuka_oleh' => $guru->id,
             'dibuka_pada' => now()
         ]);
 
-        $qrImage = QrCode::generate($tokenQr);
-
         return response()->json([
-            'message'  => 'Sesi dibuka',
-            'tipe'     => $tipe,
-            'sesi_id'  => $sesi->id,
-            'qr_token' => $tokenQr,
-            'qr_image' => 'data:image/svg+xml;base64,' . base64_encode($qrImage)
+            'message' => 'Sesi dibuka',
+            'sesi_id' => $sesi->id,
+            'qr_token' => $token,
+            'qr_image' => 'data:image/svg+xml;base64,' . base64_encode(QrCode::generate($token))
         ]);
     }
 
 
     public function scan(Request $request)
     {
-        $request->validate([
-            'token' => 'required|string'
-        ]);
+        $request->validate(['token' => 'required|string']);
 
         $user = JWTAuth::parseToken()->authenticate();
 
         if ($user->role !== 'murid') {
-            return response()->json(['message' => 'Hanya murid yang bisa scan'], 403);
+            return response()->json(['message' => 'Forbidden'], 403);
         }
 
-        $sesi = SesiAbsen::with('jadwal')
-            ->where('token_qr', $request->token)
-            ->first();
-
-        if (!$sesi) {
-            return response()->json(['message' => 'QR tidak valid'], 400);
-        }
+        $sesi = SesiAbsen::with('jadwal')->where('token_qr', $request->token)->firstOrFail();
 
         $jadwal = $sesi->jadwal;
 
-        $batasAbsen = Carbon::parse($sesi->tanggal . ' ' . $jadwal->jam_selesai)
-            ->addMinutes(10);
+        // batas waktu
+        $batas = Carbon::parse($sesi->tanggal . ' ' . $jadwal->jam_selesai)->addMinutes(10);
 
-        if (now()->gt($batasAbsen)) {
-            return response()->json(['message' => 'Waktu absen sudah habis'], 400);
+        if (now()->gt($batas)) {
+            return response()->json(['message' => 'Waktu habis'], 400);
         }
 
+        // cek anggota
         $isAnggota = AnggotaKelas::where('kelas_id', $jadwal->kelas_id)
-            ->where('murid_id', $user->id)
-            ->exists();
+            ->where('murid_id', $user->id)->exists();
 
         if (!$isAnggota) {
             return response()->json(['message' => 'Bukan anggota kelas'], 403);
         }
 
-        $exists = Absensi::where([
-            'sesi_absen_id' => $sesi->id,
-            'murid_id'      => $user->id
-        ])->exists();
-
-        if ($exists) {
+        // cek sudah absen
+        if (
+            Absensi::where([
+                'sesi_absen_id' => $sesi->id,
+                'murid_id' => $user->id
+            ])->exists()
+        ) {
             return response()->json(['message' => 'Sudah absen'], 400);
         }
 
-        // =========================
-        // CREATE ABSENSI
-        // =========================
-        $absen = Absensi::create([
-            'sesi_absen_id' => $sesi->id,
-            'murid_id'      => $user->id,
-            'status'        => 'hadir',
-            'waktu_scan'    => now()
-        ]);
 
-        // =========================
-        // HITUNG TELAT / CEPAT
-        // =========================
-        $dibuka = Carbon::parse($sesi->dibuka_pada);
-        $scan   = Carbon::parse($absen->waktu_scan);
 
-        $lateMinutes = $dibuka->diffInMinutes($scan);
+        DB::beginTransaction();
 
-        // =========================
-        // AMBIL RULE
-        // =========================
-        $rules = PointRule::where('target_role', 'murid')->get();
+        try {
 
-        foreach ($rules as $rule) {
+            $absen = Absensi::create([
+                'sesi_absen_id' => $sesi->id,
+                'murid_id' => $user->id,
+                'status' => 'hadir',
+                'waktu_scan' => now()
+            ]);
 
-            $limit = (int) $rule->condition_value;
-            $match = false;
+            $late = $this->formatLateTime($sesi->dibuka_pada, $absen->waktu_scan);
 
-            // =========================
-            // LOGIC SIMPLE: CUT OFF MODEL
-            // =========================
-            if ($rule->condition_operator === '<') {
-                // tepat waktu (bonus)
-                if ($lateMinutes <= $limit) {
-                    $match = true;
-                }
-            }
+            $lateMinutes = $late['minutes'];
+            $lateText = $late['text'];
 
-            if ($rule->condition_operator === '>') {
-                // telat (penalty)
-                if ($lateMinutes > $limit) {
-                    $match = true;
-                }
-            }
+            $point = $this->applyPoint($user->id, $absen, $lateMinutes);
 
-            if ($rule->condition_operator === 'between') {
-                [$min, $max] = explode('-', $rule->condition_value);
+            DB::commit();
 
-                if ($lateMinutes >= (int)$min && $lateMinutes <= (int)$max) {
-                    $match = true;
-                }
-            }
+            return response()->json([
+                'message' => 'Absen berhasil',
+                'late_minutes' => $lateMinutes . ' menit (' . $lateText . ') ',
+                'point' => $point
+            ]);
 
-            // =========================
-            // EXECUTE POINT
-            // =========================
-            if ($match) {
-
-                $type = $lateMinutes > $limit ? 'PENALTY' : 'EARN';
-
-                // =========================
-                // AMBIL SALDO TERAKHIR
-                // =========================
-                $lastBalance = PointLedger::where('user_id', $user->id)
-                    ->latest('id')
-                    ->value('current_balance') ?? 0;
-
-                // =========================
-                // HITUNG SALDO BARU
-                // =========================
-                $amount = $rule->point_modifier;
-
-                $newBalance = $lastBalance + $amount;
-
-                // =========================
-                // SIMPAN LEDGER
-                // =========================
-                PointLedger::create([
-                    'user_id' => $user->id,
-                    'transaction_type' => $type,
-                    'amount' => $amount,
-                    'current_balance' => $newBalance,
-                    'description' => $rule->rule_name . " ({$lateMinutes} menit)",
-                    'absensi_id' => $absen->id
-                ]);
-
-                break;
-            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Error', 'error' => $e->getMessage()], 500);
         }
-
-        return response()->json([
-            'message' => 'Absen berhasil + point dihitung',
-            'data'    => $absen,
-            'late_minutes' => $lateMinutes,
-            'point' => $newBalance
-        ]);
     }
 
     public function absenManual(Request $request)
     {
         $request->validate([
-            'sesi_id'           => 'required|exists:sesi_absen,id',
-            'data'              => 'required|array',
-            'data.*.murid_id'   => 'required|exists:users,id',
-            'data.*.status'     => 'required|in:hadir,izin,sakit,alpha'
+            'sesi_id' => 'required|exists:sesi_absen,id',
+            'data' => 'required|array',
+            'data.*.murid_id' => 'required|exists:users,id',
+            'data.*.status' => 'required|in:hadir,izin,sakit,alpha'
         ]);
 
         $guru = JWTAuth::parseToken()->authenticate();
@@ -253,36 +162,82 @@ class ApiControllers extends Controller
 
         $sesi = SesiAbsen::with('jadwal')->findOrFail($request->sesi_id);
 
-        if ($guru->id !== $sesi->dibuka_oleh) {
-            return response()->json(['message' => 'Bukan sesi Anda'], 403);
-        }
+        DB::beginTransaction();
 
-        $batasAbsen = Carbon::parse(
-            $sesi->tanggal . ' ' . $sesi->jadwal->jam_selesai
-        )->addMinutes(10);
+        try {
 
-        if (now()->gt($batasAbsen)) {
-            return response()->json(['message' => 'Sesi sudah berakhir'], 422);
-        }
+            foreach ($request->data as $item) {
 
-        foreach ($request->data as $item) {
-
-            Absensi::updateOrCreate(
-                [
+                // ambil data lama dulu (kalau ada)
+                $existing = Absensi::where([
                     'sesi_absen_id' => $sesi->id,
-                    'murid_id'      => $item['murid_id']
-                ],
-                [
-                    'status'     => $item['status'],
-                    'waktu_scan' => now()
-                ]
-            );
-        }
+                    'murid_id' => $item['murid_id']
+                ])->first();
 
-        return response()->json([
-            'message' => 'Absensi berhasil disimpan / diperbarui'
-        ]);
+                $oldStatus = $existing->status ?? null;
+
+                // update / create absensi
+                $absen = Absensi::updateOrCreate(
+                    [
+                        'sesi_absen_id' => $sesi->id,
+                        'murid_id' => $item['murid_id']
+                    ],
+                    [
+                        'status' => $item['status'],
+                        'waktu_scan' => now()
+                    ]
+                );
+
+                /*
+                ======================================
+                🔥 LOGIC POINT (ANTI DOUBLE + ROLLBACK)
+                ======================================
+                */
+
+                // ✅ kalau sebelumnya alpha, sekarang bukan → hapus penalty
+                if ($oldStatus === 'alpha' && $item['status'] !== 'alpha') {
+
+                    $lastPenalty = PointLedger::where('absensi_id', $absen->id)
+                        ->where('transaction_type', 'PENALTY')
+                        ->latest('id')
+                        ->first();
+
+                    if ($lastPenalty) {
+                        $lastPenalty->delete();
+                    }
+                }
+
+                // ✅ kalau sekarang alpha → kasih penalty (kalau belum ada)
+                if ($item['status'] === 'alpha') {
+
+                    $alreadyPointed = PointLedger::where('absensi_id', $absen->id)->exists();
+
+                    if (!$alreadyPointed) {
+                        $this->applyPoint($item['murid_id'], $absen, null, 'alpha');
+                    }
+                }
+
+                // ✅ APPLY POINT (TELAT / RULE TIME)
+                $lateMinutes = Carbon::parse($sesi->dibuka_pada)
+                    ->diffInMinutes($absen->waktu_scan);
+
+                $this->applyPoint($item['murid_id'], $absen, $lateMinutes, $item['status']);
+            }
+
+            DB::commit();
+
+            return response()->json(['message' => 'Berhasil update absensi']);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'message' => 'Error',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
 
 
     public function getMuridSesi($Id)
@@ -421,7 +376,7 @@ class ApiControllers extends Controller
         $request->validate([
             'jadwal_id' => 'required|exists:jadwal,id',
             'murid_id' => 'required|exists:users,id',
-            'scores'   => 'required|array',
+            'scores' => 'required|array',
             'scores.*.category_id' => 'required|exists:assessment_categories,id',
             'scores.*.score' => 'required|integer|min:1|max:5',
             'catatan' => 'nullable|string'
@@ -474,12 +429,12 @@ class ApiControllers extends Controller
         */
 
             $assessment = Assessment::create([
-                'guru_id'  => $guru->id,
+                'guru_id' => $guru->id,
                 'murid_id' => $request->murid_id,
                 'kelas_id' => $jadwal->kelas_id,
                 'mapel_id' => $jadwal->mapel_id,
-                'tanggal'  => now(),
-                'catatan'  => $request->catatan
+                'tanggal' => now(),
+                'catatan' => $request->catatan
             ]);
 
             /*
@@ -492,8 +447,8 @@ class ApiControllers extends Controller
 
                 AssessmentDetail::create([
                     'assessment_id' => $assessment->id,
-                    'category_id'   => $score['category_id'],
-                    'score'         => $score['score']
+                    'category_id' => $score['category_id'],
+                    'score' => $score['score']
                 ]);
             }
 
@@ -508,7 +463,7 @@ class ApiControllers extends Controller
 
             return response()->json([
                 'message' => 'Gagal menyimpan',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -517,7 +472,7 @@ class ApiControllers extends Controller
     {
         $request->validate([
             'start_date' => 'nullable|date',
-            'end_date'   => 'nullable|date'
+            'end_date' => 'nullable|date'
         ]);
 
         $guru = JWTAuth::parseToken()->authenticate();
@@ -749,7 +704,7 @@ class ApiControllers extends Controller
 
         // Hari ini sampai 6 hari ke depan
         $startDate = Carbon::now();
-        $endDate   = Carbon::now()->addDays(6);
+        $endDate = Carbon::now()->addDays(6);
 
         $daysOfWeek = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
 
@@ -953,9 +908,11 @@ class ApiControllers extends Controller
     public function leaderboard()
     {
         $users = User::where('role', 'murid')
-            ->with(['pointLedgers' => function ($q) {
-                $q->latest()->limit(1);
-            }])
+            ->with([
+                'pointLedgers' => function ($q) {
+                    $q->latest()->limit(1);
+                }
+            ])
             ->get()
             ->map(function ($u) {
                 $last = $u->pointLedgers->first();
@@ -977,4 +934,118 @@ class ApiControllers extends Controller
             'data' => $users
         ]);
     }
+
+
+
+
+    public function applyPoint($userId, $absen, $lateMinutes, $status = 'hadir')
+    {
+        $rules = PointRule::where('target_role', 'murid')->get();
+
+        $currentBalance = PointLedger::where('user_id', $userId)
+            ->latest('id')
+            ->value('current_balance') ?? 0;
+
+        $applied = false;
+
+        foreach ($rules as $rule) {
+
+            $match = false;
+
+            // =========================
+            // ALPHA
+            // =========================
+            if ($rule->condition_type === 'ALPHA' && $status === 'alpha') {
+                $match = true;
+            }
+
+            // =========================
+            // TIME BASED
+            // =========================
+            if ($rule->condition_type === 'TIME' && $lateMinutes !== null) {
+
+                $min = $rule->min_value ?? 0;
+                $max = $rule->max_value;
+
+                if (is_null($max)) {
+                    if ($lateMinutes >= $min) {
+                        $match = true;
+                    }
+                } else {
+                    if ($lateMinutes >= $min && $lateMinutes <= $max) {
+                        $match = true;
+                    }
+                }
+            }
+
+            if (!$match)
+                continue;
+
+            $exists = PointLedger::where('absensi_id', $absen->id)
+                ->where('description', 'like', $rule->rule_name . '%')
+                ->exists();
+
+            if ($exists)
+                continue;
+
+            // =========================
+            // APPLY POINT
+            // =========================
+            $amount = $rule->point_modifier;
+            $currentBalance += $amount;
+
+            $type = $amount >= 0 ? 'EARN' : 'PENALTY';
+
+            // =========================
+            // 🔥 FIX: FORMAT WAKTU LEBIH MANUSIAWI
+            // =========================
+            $timeText = '';
+
+            if ($lateMinutes !== null) {
+                $seconds = $absen->waktu_scan->diffInSeconds($absen->sesiAbsen->dibuka_pada ?? $absen->waktu_scan);
+
+                $min = floor($seconds / 60);
+                $sec = $seconds % 60;
+
+                if ($min > 0) {
+                    $timeText .= "{$min} menit ";
+                }
+
+                $timeText .= "{$sec} detik";
+            }
+
+            PointLedger::create([
+                'user_id' => $userId,
+                'transaction_type' => $type,
+                'amount' => $amount,
+                'current_balance' => $currentBalance,
+                'description' => $rule->rule_name . ($timeText ? " ({$timeText})" : ""),
+                'absensi_id' => $absen->id
+            ]);
+
+            $applied = true;
+            break;
+        }
+
+        return $applied ? $currentBalance : null;
+    }
+
+
+    private function formatLateTime($start, $end)
+    {
+        $seconds = Carbon::parse($start)->diffInSeconds($end);
+
+        $min = floor($seconds / 60);
+        $sec = $seconds % 60;
+
+        return [
+            'minutes' => $min,
+            'seconds' => $sec,
+            'text' => ($min > 0 ? "{$min} menit " : "") . "{$sec} detik"
+        ];
+    }
 }
+
+
+
+

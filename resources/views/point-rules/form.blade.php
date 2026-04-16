@@ -31,18 +31,21 @@
                     </div>
 
                     <div class="mb-3">
-                        <label>Condition Operator</label>
-                        <select name="condition_operator" class="form-control">
-                            <option value="<">Kurang dari</option>
-                            <option value=">">Lebih dari</option>
-                            <option value="between">Antara</option>
+                        <label>Condition Type</label>
+                        <select name="condition_type" id="condition_type" class="form-control">
+                            <option value="TIME">Keterlambatan (Menit)</option>
+                            <option value="ALPHA">Alpha</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label>Condition Value</label>
-                        <input type="text" name="condition_value" class="form-control" placeholder="contoh: 3 atau 1-5"
-                            required>
+                        <label>Min Value</label>
+                        <input type="number" name="min_value" class="form-control" placeholder="Minimal nilai (opsional)">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Max Value</label>
+                        <input type="number" name="max_value" class="form-control" placeholder="Maksimal nilai (opsional)">
                     </div>
 
                     <div class="mb-3">
@@ -69,13 +72,14 @@
                 .then(data => {
                     document.querySelector('[name=rule_name]').value = data.rule_name
                     document.querySelector('[name=target_role]').value = data.target_role
-                    document.querySelector('[name=condition_operator]').value = data.condition_operator
-                    document.querySelector('[name=condition_value]').value = data.condition_value
+                    document.querySelector('[name=condition_type]').value = data.condition_type
+                    document.querySelector('[name=min_value]').value = data.min_value ?? ''
+                    document.querySelector('[name=max_value]').value = data.max_value ?? ''
                     document.querySelector('[name=point_modifier]').value = data.point_modifier
                 })
         }
 
-        document.getElementById('form').addEventListener('submit', function(e) {
+        document.getElementById('form').addEventListener('submit', function (e) {
             e.preventDefault()
 
             const formData = new FormData(this)
@@ -88,12 +92,12 @@
             }
 
             fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: formData
-                })
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: formData
+            })
                 .then(res => res.json())
                 .then(() => {
                     alert('Berhasil disimpan')

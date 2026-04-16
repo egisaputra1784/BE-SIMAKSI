@@ -37,6 +37,26 @@
 
 @push('scripts')
     <script>
+        function formatCondition(d) {
+            if (d.condition_type === 'ALPHA') {
+                return 'Alpha'
+            }
+
+            if (d.min_value !== null && d.max_value !== null) {
+                return `${d.min_value} - ${d.max_value} menit`
+            }
+
+            if (d.min_value !== null && d.max_value === null) {
+                return `> ${d.min_value} menit`
+            }
+
+            if (d.min_value === null && d.max_value !== null) {
+                return `< ${d.max_value} menit`
+            }
+
+            return '-'
+        }
+
         function loadData() {
             fetch('/point-rules/data')
                 .then(res => res.json())
@@ -46,17 +66,17 @@
                     data.forEach((d, i) => {
 
                         html += `
-                <tr>
-                    <td>${i+1}</td>
-                    <td>${d.rule_name}</td>
-                    <td>${d.target_role}</td>
-                    <td>${d.condition_operator} ${d.condition_value}</td>
-                    <td>${d.point_modifier}</td>
-                    <td>
-                        <button onclick="edit(${d.id})" class="btn btn-warning btn-sm">Edit</button>
-                        <button onclick="hapus(${d.id})" class="btn btn-danger btn-sm">Hapus</button>
-                    </td>
-                </tr>`
+                    <tr>
+                        <td>${i + 1}</td>
+                        <td>${d.rule_name}</td>
+                        <td>${d.target_role}</td>
+                        <td>${formatCondition(d)}</td>
+                        <td>${d.point_modifier}</td>
+                        <td>
+                            <button onclick="edit(${d.id})" class="btn btn-warning btn-sm">Edit</button>
+                            <button onclick="hapus(${d.id})" class="btn btn-danger btn-sm">Hapus</button>
+                        </td>
+                    </tr>`
                     })
 
                     document.getElementById('table').innerHTML = html

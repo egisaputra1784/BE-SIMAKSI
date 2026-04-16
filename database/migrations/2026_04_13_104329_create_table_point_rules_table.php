@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -16,8 +15,9 @@ return new class extends Migration
             $table->string('rule_name');
             $table->string('target_role');
 
-            $table->enum('condition_operator', ['<', '>', 'between']);
-            $table->string('condition_value');
+            $table->enum('condition_type', ['TIME', 'ALPHA']);
+            $table->integer('min_value')->nullable();
+            $table->integer('max_value')->nullable();
 
             $table->integer('point_modifier');
 

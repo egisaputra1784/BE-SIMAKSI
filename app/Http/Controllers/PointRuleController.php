@@ -22,16 +22,18 @@ class PointRuleController extends Controller
         $request->validate([
             'rule_name' => 'required',
             'target_role' => 'required',
-            'condition_operator' => 'required',
-            'condition_value' => 'required',
+            'condition_type' => 'required|in:TIME,ALPHA',
+            'min_value' => 'nullable|integer',
+            'max_value' => 'nullable|integer',
             'point_modifier' => 'required|integer',
         ]);
 
         PointRule::create([
             'rule_name' => $request->rule_name,
             'target_role' => $request->target_role,
-            'condition_operator' => $request->condition_operator,
-            'condition_value' => $request->condition_value,
+            'condition_type' => $request->condition_type,
+            'min_value' => $request->min_value,
+            'max_value' => $request->max_value,
             'point_modifier' => $request->point_modifier,
         ]);
 
@@ -50,8 +52,9 @@ class PointRuleController extends Controller
         $data->update([
             'rule_name' => $request->rule_name,
             'target_role' => $request->target_role,
-            'condition_operator' => $request->condition_operator,
-            'condition_value' => $request->condition_value,
+            'condition_type' => $request->condition_type,
+            'min_value' => $request->min_value,
+            'max_value' => $request->max_value,
             'point_modifier' => $request->point_modifier,
         ]);
 

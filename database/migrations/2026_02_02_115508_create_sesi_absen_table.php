@@ -16,6 +16,7 @@ class CreateSesiAbsenTable extends Migration
             $table->enum('tipe', ['masuk','mapel','pulang']);
             $table->foreignId('dibuka_oleh')->constrained('users');
             $table->timestamp('dibuka_pada');
+            $table->boolean('is_closed')->default(false);
             $table->timestamps();
         });
     }

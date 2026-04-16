@@ -11,8 +11,9 @@ class PointRule extends Model
     protected $fillable = [
         'rule_name',
         'target_role',
-        'condition_operator',
-        'condition_value',
+        'condition_type',
+        'min_value',
+        'max_value',
         'point_modifier',
     ];
 }

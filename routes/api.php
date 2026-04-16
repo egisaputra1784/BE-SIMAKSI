@@ -25,10 +25,10 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/change-password', [AuthControllers::class, 'changePassword']);
 
     /*
-    |--------------------------------------------------------------------------
-    | ABSENSI
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| ABSENSI
+|--------------------------------------------------------------------------
+*/
 
     // buka sesi otomatis berdasarkan jam
     Route::post('/buka-absen', [ApiControllers::class, 'bukaAbsen']);
@@ -36,14 +36,14 @@ Route::middleware('auth:api')->group(function () {
     // scan qr
     Route::post('/absensi/scan', [ApiControllers::class, 'scan']);
 
-    // manual satu murid
-    Route::post('/absensi/manual-qr', [ApiControllers::class, 'absenManualQR']);
-
-    // manual massal
+    // manual massal (guru input status)
     Route::post('/absensi/manual', [ApiControllers::class, 'absenManual']);
 
     // murid dalam sesi
     Route::get('/sesi/{id}/murid', [ApiControllers::class, 'getMuridSesi']);
+
+    // close sesi (WAJIB ADA karena ada function di controller)
+    Route::post('/sesi/{id}/close', [ApiControllers::class, 'closeSesi']);
 
 
     /*
