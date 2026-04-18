@@ -42,9 +42,6 @@ Route::middleware('auth:api')->group(function () {
     // murid dalam sesi
     Route::get('/sesi/{id}/murid', [ApiControllers::class, 'getMuridSesi']);
 
-    // close sesi (WAJIB ADA karena ada function di controller)
-    Route::post('/sesi/{id}/close', [ApiControllers::class, 'closeSesi']);
-
 
     /*
     |--------------------------------------------------------------------------

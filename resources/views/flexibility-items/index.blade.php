@@ -20,6 +20,8 @@
                             <th>#</th>
                             <th>Nama Item</th>
                             <th>Point Cost</th>
+                            <th>Type</th>
+                            <th>Max Late</th>
                             <th>Stock</th>
                             <th>Aksi</th>
                         </tr>
@@ -48,6 +50,8 @@
                     <td>${i+1}</td>
                     <td>${d.item_name}</td>
                     <td>${d.point_cost}</td>
+                    <td>${d.type}</td>
+                    <td>${d.max_late_minutes ?? '-'}</td>
                     <td>${d.stock_limit ?? '-'}</td>
                     <td>
                         <button onclick="edit(${d.id})" class="btn btn-warning btn-sm">Edit</button>

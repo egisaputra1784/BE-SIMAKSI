@@ -86,22 +86,20 @@ class ApiControllers extends Controller
 
         $jadwal = $sesi->jadwal;
 
-        // batas waktu
         $batas = Carbon::parse($sesi->tanggal . ' ' . $jadwal->jam_selesai)->addMinutes(10);
 
         if (now()->gt($batas)) {
             return response()->json(['message' => 'Waktu habis'], 400);
         }
 
-        // cek anggota
         $isAnggota = AnggotaKelas::where('kelas_id', $jadwal->kelas_id)
-            ->where('murid_id', $user->id)->exists();
+            ->where('murid_id', $user->id)
+            ->exists();
 
         if (!$isAnggota) {
             return response()->json(['message' => 'Bukan anggota kelas'], 403);
         }
 
-        // cek sudah absen
         if (
             Absensi::where([
                 'sesi_absen_id' => $sesi->id,
@@ -110,8 +108,6 @@ class ApiControllers extends Controller
         ) {
             return response()->json(['message' => 'Sudah absen'], 400);
         }
-
-
 
         DB::beginTransaction();
 
@@ -124,24 +120,89 @@ class ApiControllers extends Controller
                 'waktu_scan' => now()
             ]);
 
-            $late = $this->formatLateTime($sesi->dibuka_pada, $absen->waktu_scan);
+            // hitung telat (single source of truth)
+            $lateSeconds = Carbon::parse($sesi->dibuka_pada)
+                ->diffInSeconds($absen->waktu_scan);
 
-            $lateMinutes = $late['minutes'];
-            $lateText = $late['text'];
+            $lateMinutes = floor($lateSeconds / 60);
+            $lateRemainingSeconds = $lateSeconds % 60;
 
-            $point = $this->applyPoint($user->id, $absen, $lateMinutes);
+            // cek voucher
+            $voucher = UserToken::where('user_id', $user->id)
+                ->where('status', 'AVAILABLE')
+                ->whereHas('item', fn($q) => $q->where('type', 'LATE'))
+                ->with('item')
+                ->first();
+
+            $timeRules = PointRule::where('condition_type', 'TIME')
+                ->orderBy('min_value')
+                ->get();
+
+            // cari rule pertama yang penalty (point negatif)
+            $penaltyRule = $timeRules->first(fn($r) => $r->point_modifier < 0);
+
+            // threshold mulai telat "beneran"
+            $penaltyStart = $penaltyRule?->min_value ?? 0;
+
+            $usedVoucher = false;
+
+            if ($lateMinutes >= $penaltyStart && $voucher) {
+
+                $maxLate = $voucher->item->max_late_minutes;
+
+                // 🚫 kalau melebihi batas voucher → gak boleh dipakai
+                if ($maxLate !== null && $lateMinutes > $maxLate) {
+                    // skip voucher, tetap kena penalty
+                } else {
+
+                    $voucher->update([
+                        'status' => 'USED',
+                        'used_at_attendance_id' => $absen->id
+                    ]);
+
+                    PointLedger::create([
+                        'user_id' => $user->id,
+                        'transaction_type' => 'SPEND',
+                        'amount' => 0,
+                        'current_balance' => PointLedger::where('user_id', $user->id)
+                            ->latest('id')
+                            ->value('current_balance') ?? 0,
+
+                        'event_type' => 'VOUCHER_USED',
+                        'item_id' => $voucher->item_id,
+                        'used_token_id' => $voucher->id,
+                        'absensi_id' => $absen->id,
+                        'description' => 'Pakai voucher telat'
+                    ]);
+
+                    $lateMinutes = 0;
+                    $usedVoucher = true;
+                }
+            }
+
+            $point = $this->applyPoint(
+                $user->id,
+                $absen,
+                $lateMinutes,
+                'hadir',
+                $usedVoucher
+            );
 
             DB::commit();
 
             return response()->json([
                 'message' => 'Absen berhasil',
-                'late_minutes' => $lateMinutes . ' menit (' . $lateText . ') ',
+                'late_minutes' => $lateMinutes,
                 'point' => $point
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Error', 'error' => $e->getMessage()], 500);
+
+            return response()->json([
+                'message' => 'Error',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
@@ -819,6 +880,10 @@ class ApiControllers extends Controller
                 'transaction_type' => 'SPEND',
                 'amount' => -$item->point_cost,
                 'current_balance' => $newBalance,
+
+                'event_type' => 'BUY_ITEM',
+                'item_id' => $item->id,
+
                 'description' => 'Beli token: ' . $item->item_name
             ]);
 
@@ -862,7 +927,15 @@ class ApiControllers extends Controller
         $tokens = UserToken::with('item')
             ->where('user_id', $user->id)
             ->where('status', 'AVAILABLE')
-            ->get();
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'item_id' => $t->item_id,
+                    'type' => $t->item->type,
+                    'max_late_minutes' => $t->item->max_late_minutes,
+                ];
+            });
 
         return response()->json([
             'data' => $tokens
@@ -886,16 +959,53 @@ class ApiControllers extends Controller
     {
         $user = JWTAuth::parseToken()->authenticate();
 
-        $history = PointLedger::where('user_id', $user->id)
+        $history = PointLedger::with([
+            'item',
+            'absensi.sesiAbsen.jadwal.mapel',
+            'absensi.sesiAbsen.jadwal.kelas',
+        ])
+            ->where('user_id', $user->id)
             ->latest()
             ->get()
             ->map(function ($item) {
+
+                switch ($item->event_type) {
+
+                    case 'BUY_ITEM':
+                        $context = [
+                            'type' => 'purchase',
+                            'item_name' => $item->item?->item_name,
+                        ];
+                        break;
+
+                    case 'VOUCHER_USED':
+                        $context = [
+                            'type' => 'voucher_used',
+                            'token_id' => $item->used_token_id,
+                        ];
+                        break;
+
+                    case 'ATTENDANCE':
+                    default:
+                        $jadwal = $item->absensi?->sesiAbsen?->jadwal;
+
+                        $context = [
+                            'type' => 'attendance',
+                            'mapel' => $jadwal?->mapel?->nama_mapel,
+                            'kelas' => $jadwal?->kelas?->nama_kelas,
+                        ];
+                        break;
+                }
+
                 return [
+                    'id' => $item->id,
                     'type' => $item->transaction_type,
+                    'event_type' => $item->event_type,
                     'amount' => $item->amount,
                     'balance' => $item->current_balance,
                     'description' => $item->description,
-                    'date' => $item->created_at
+                    'context' => $context,
+                    'date' => $item->created_at,
                 ];
             });
 
@@ -938,7 +1048,7 @@ class ApiControllers extends Controller
 
 
 
-    public function applyPoint($userId, $absen, $lateMinutes, $status = 'hadir')
+    public function applyPoint($userId, $absen, $lateMinutes, $status = 'hadir', $usedVoucher = false)
     {
         $rules = PointRule::where('target_role', 'murid')->get();
 
@@ -946,41 +1056,47 @@ class ApiControllers extends Controller
             ->latest('id')
             ->value('current_balance') ?? 0;
 
-        $applied = false;
-
         foreach ($rules as $rule) {
 
             $match = false;
 
             // =========================
-            // ALPHA
+            // ALPHA RULE
             // =========================
-            if ($rule->condition_type === 'ALPHA' && $status === 'alpha') {
-                $match = true;
+            if ($rule->condition_type === 'ALPHA') {
+                if ($status === 'alpha') {
+                    $match = true;
+                }
             }
 
             // =========================
-            // TIME BASED
+            // TIME RULE (VOUCHER BLOCK TOTAL)
             // =========================
-            if ($rule->condition_type === 'TIME' && $lateMinutes !== null) {
+            if ($rule->condition_type === 'TIME') {
+
+                if ($usedVoucher) {
+                    continue;
+                }
+
+                if ($lateMinutes === null) {
+                    continue;
+                }
 
                 $min = $rule->min_value ?? 0;
                 $max = $rule->max_value;
 
-                if (is_null($max)) {
-                    if ($lateMinutes >= $min) {
-                        $match = true;
-                    }
-                } else {
-                    if ($lateMinutes >= $min && $lateMinutes <= $max) {
-                        $match = true;
-                    }
-                }
+                // FIX: pastikan range inclusive bener
+                $match = is_null($max)
+                    ? $lateMinutes >= $min
+                    : ($lateMinutes >= $min && $lateMinutes <= $max);
             }
 
             if (!$match)
                 continue;
 
+            // =========================
+            // ANTI DUPLICATE RULE ENTRY
+            // =========================
             $exists = PointLedger::where('absensi_id', $absen->id)
                 ->where('description', 'like', $rule->rule_name . '%')
                 ->exists();
@@ -996,22 +1112,18 @@ class ApiControllers extends Controller
 
             $type = $amount >= 0 ? 'EARN' : 'PENALTY';
 
-            // =========================
-            // 🔥 FIX: FORMAT WAKTU LEBIH MANUSIAWI
-            // =========================
+            // waktu readable
             $timeText = '';
 
-            if ($lateMinutes !== null) {
-                $seconds = $absen->waktu_scan->diffInSeconds($absen->sesiAbsen->dibuka_pada ?? $absen->waktu_scan);
 
-                $min = floor($seconds / 60);
-                $sec = $seconds % 60;
+            if ($lateMinutes !== null && $lateMinutes > 0) {
 
-                if ($min > 0) {
-                    $timeText .= "{$min} menit ";
-                }
+                $totalSeconds = (int) round($lateMinutes * 60);
 
-                $timeText .= "{$sec} detik";
+                $min = floor($totalSeconds / 60);
+                $sec = $totalSeconds % 60;
+
+                $timeText = ($min > 0 ? "{$min} menit " : "") . ($sec > 0 ? "{$sec} detik" : "");
             }
 
             PointLedger::create([
@@ -1019,15 +1131,17 @@ class ApiControllers extends Controller
                 'transaction_type' => $type,
                 'amount' => $amount,
                 'current_balance' => $currentBalance,
+
+                'event_type' => 'ATTENDANCE',
+
                 'description' => $rule->rule_name . ($timeText ? " ({$timeText})" : ""),
                 'absensi_id' => $absen->id
             ]);
 
-            $applied = true;
-            break;
+            break; // 🔥 penting: 1 rule = 1 apply aja
         }
 
-        return $applied ? $currentBalance : null;
+        return $currentBalance;
     }
 
 

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->integer('point_cost');
             $table->integer('stock_limit')->nullable();
 
+
             $table->timestamps();
         });
     }

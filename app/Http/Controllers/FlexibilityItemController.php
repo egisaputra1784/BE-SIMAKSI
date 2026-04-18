@@ -22,13 +22,17 @@ class FlexibilityItemController extends Controller
         $request->validate([
             'item_name' => 'required',
             'point_cost' => 'required|integer',
-            'stock_limit' => 'nullable|integer'
+            'type' => 'required|in:LATE,ALPHA',
+            'stock_limit' => 'nullable|integer',
+            'max_late_minutes' => 'nullable|integer'
         ]);
 
         FlexibilityItem::create([
             'item_name' => $request->item_name,
             'point_cost' => $request->point_cost,
-            'stock_limit' => $request->stock_limit
+            'type' => $request->type,
+            'stock_limit' => $request->stock_limit,
+            'max_late_minutes' => $request->max_late_minutes
         ]);
 
         return response()->json(['success' => true]);
@@ -46,7 +50,9 @@ class FlexibilityItemController extends Controller
         $item->update([
             'item_name' => $request->item_name,
             'point_cost' => $request->point_cost,
-            'stock_limit' => $request->stock_limit
+            'type' => $request->type,
+            'stock_limit' => $request->stock_limit,
+            'max_late_minutes' => $request->max_late_minutes
         ]);
 
         return response()->json(['success' => true]);

@@ -24,6 +24,7 @@ class CloseExpiredSesiAbsen extends Command
 
         $sesiList = SesiAbsen::with('jadwal')
             ->where('is_closed', false)
+            ->whereDate('tanggal', '<=', now())
             ->get();
 
         $count = 0;
@@ -63,8 +64,45 @@ class CloseExpiredSesiAbsen extends Command
 
                     // hanya yang baru dibuat = belum absen
                     if ($absen->wasRecentlyCreated) {
+
+                        $voucher = \App\Models\UserToken::where('user_id', $m->murid_id)
+                            ->where('status', 'AVAILABLE')
+                            ->whereHas('item', fn($q) => $q->where('type', 'ALPHA'))
+                            ->lockForUpdate()
+                            ->with('item')
+                            ->first();
+
+                        $usedVoucher = false;
+
+                        if ($voucher) {
+
+                            // 🔥 pakai voucher
+                            $voucher->update([
+                                'status' => 'USED',
+                                'used_at_attendance_id' => $absen->id
+                            ]);
+
+                            \App\Models\PointLedger::create([
+                                'user_id' => $m->murid_id,
+                                'transaction_type' => 'SPEND',
+                                'amount' => 0,
+                                'current_balance' => \App\Models\PointLedger::where('user_id', $m->murid_id)
+                                    ->latest('id')
+                                    ->value('current_balance') ?? 0,
+
+                                'event_type' => 'VOUCHER_USED',
+                                'item_id' => $voucher->item_id,
+                                'used_token_id' => $voucher->id,
+                                'absensi_id' => $absen->id,
+                                'description' => 'Pakai voucher alpha'
+                            ]);
+
+                            $usedVoucher = true;
+                        }
+
+                        // 🔥 apply point (kalau gak pakai voucher → kena penalty)
                         app(ApiControllers::class)
-                            ->applyPoint($m->murid_id, $absen, null, 'alpha');
+                            ->applyPoint($m->murid_id, $absen, null, 'alpha', $usedVoucher);
                     }
                 }
 
@@ -76,6 +114,7 @@ class CloseExpiredSesiAbsen extends Command
                 DB::commit();
 
                 $count++;
+
 
             } catch (\Exception $e) {
                 DB::rollBack();

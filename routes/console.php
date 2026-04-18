@@ -9,6 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('absensi:close-expired')
-    ->everyMinute()
+    ->everyTenMinutes()
     ->withoutOverlapping()
     ->runInBackground();

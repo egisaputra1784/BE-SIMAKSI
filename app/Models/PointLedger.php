@@ -15,8 +15,10 @@ class PointLedger extends Model
         'current_balance',
         'description',
         'absensi_id',
+        'event_type',
+        'item_id',
+        'used_token_id',
     ];
-
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -26,4 +28,18 @@ class PointLedger extends Model
     {
         return $this->belongsTo(Absensi::class);
     }
+
+    public function item()
+    {
+        return $this->belongsTo(FlexibilityItem::class, 'item_id');
+    }
+
+    public function usedToken()
+    {
+        return $this->belongsTo(UserToken::class, 'used_token_id');
+    }
+
+
 }
+
+

@@ -10,7 +10,7 @@ class Absensi extends Model
     public $timestamps = false;
     protected $guarded = [];
 
-    public function sesi()
+    public function sesiAbsen()
     {
         return $this->belongsTo(SesiAbsen::class, 'sesi_absen_id');
     }
