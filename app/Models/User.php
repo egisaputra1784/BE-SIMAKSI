@@ -40,6 +40,11 @@ class User extends Authenticatable implements JWTSubject
     |--------------------------------------------------------------------------
     */
 
+    public function kelas()
+    {
+        return $this->belongsTo(Kelas::class, 'kelas_id');
+    }
+
     // wali kelas (guru)
     public function waliKelas()
     {
@@ -87,5 +92,15 @@ class User extends Authenticatable implements JWTSubject
     public function tokens()
     {
         return $this->hasMany(UserToken::class);
+    }
+
+    public function kelasMurid()
+    {
+        return $this->belongsToMany(
+            Kelas::class,
+            'anggota_kelas',
+            'murid_id',
+            'kelas_id'
+        );
     }
 }

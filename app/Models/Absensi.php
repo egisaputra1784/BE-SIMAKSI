@@ -15,4 +15,9 @@ class Absensi extends Model
         return $this->belongsTo(SesiAbsen::class, 'sesi_absen_id');
     }
 
+    public function murid()
+    {
+        return $this->belongsTo(User::class, 'murid_id');
+    }
 }
+

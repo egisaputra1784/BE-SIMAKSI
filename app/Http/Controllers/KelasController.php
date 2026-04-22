@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use App\Models\Kelas;
 use App\Models\TahunAjar;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\KelasExport;
 
 class KelasController extends Controller
 {
@@ -57,5 +59,10 @@ class KelasController extends Controller
     {
         Kelas::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new KelasExport, 'data-kelas-' . date('Ymd') . '.xlsx');
     }
 }

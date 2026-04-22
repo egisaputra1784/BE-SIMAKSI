@@ -1,118 +1,97 @@
 @extends('layouts.master')
-
 @section('content')
-    <div class="content-wrapper pb-4">
 
-        {{-- HEADER --}}
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="fw-bold mb-0">Data Guru</h3>
-                <small class="text-muted">Kelola akun guru & pengajar</small>
-            </div>
-
-            <a href="/guru/form" class="btn btn-success">
-                <i class="mdi mdi-plus"></i> Tambah Guru
-            </a>
-        </div>
-
-
-        {{-- CARD --}}
-        <div class="card shadow-sm">
-            <div class="card-body">
-
-                {{-- SEARCH --}}
-                <div class="row mb-3">
-                    <div class="col-md-4">
-                        <input type="text" class="form-control" placeholder="Cari nama / email / NIP...">
-                    </div>
-                </div>
-
-
-                {{-- TABLE --}}
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-
-                        <thead class="table-light">
-                            <tr>
-                                <th width="5%">#</th>
-                                <th>Guru</th>
-                                <th>Email</th>
-                                <th>NIP</th>
-                                <th>Role</th>
-                                <th width="15%" class="text-center">Aksi</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="guru-table">
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">Loading...</td>
-                            </tr>
-                        </tbody>
-
-                    </table>
-                </div>
-
-            </div>
-        </div>
-
+<div class="page-header-bar">
+    <div>
+        <h3>Data Guru</h3>
+        <small>Kelola akun guru & pengajar</small>
     </div>
+    <div class="page-header-actions">
+        <a href="/guru/export/excel" class="btn-success-custom">
+            <i class="mdi mdi-microsoft-excel"></i> Export Excel
+        </a>
+        <a href="/guru/form" class="btn-primary-custom">
+            <i class="mdi mdi-plus"></i> Tambah Guru
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header-custom">
+        <span class="card-title-custom"><i class="mdi mdi-account-tie me-2" style="color:var(--primary);"></i>Daftar Guru</span>
+        <input type="text" id="search" class="search-input" placeholder="Cari nama / email / NIP...">
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="simaksi-table">
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th>Nama Guru</th>
+                    <th>Email</th>
+                    <th>NIP</th>
+                    <th>Role</th>
+                    <th width="140px" style="text-align:center;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="guru-table">
+                <tr><td colspan="6" class="empty-state"><i class="mdi mdi-loading mdi-spin"></i><p>Memuat data...</p></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 @endsection
 
-
 @push('scripts')
-    <script>
-        let allGuru = []
+<script>
+    let allData = []
 
-        function loadGuru() {
-            fetch('/guru/data')
-                .then(res => res.json())
-                .then(data => {
-                    allGuru = data
-                    renderData(data)
-                })
+    function loadData() {
+        fetch('/guru/data').then(r => r.json()).then(data => {
+            allData = data; render(data);
+        })
+    }
+
+    function render(data) {
+        const tb = document.getElementById('guru-table')
+        if (!data.length) {
+            tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><i class="mdi mdi-account-off-outline"></i><p>Tidak ada data guru</p></div></td></tr>`
+            return
         }
-
-        function renderData(data) {
-            let html = ''
-
-            if (data.length === 0) {
-                html = `<tr><td colspan="6" class="text-center">Tidak ada data</td></tr>`
-            } else {
-                data.forEach((g, i) => {
-                    html += `
+        tb.innerHTML = data.map((g, i) => `
             <tr>
-                <td>${i + 1}</td>
-                <td>${g.name}</td>
-                <td>${g.email}</td>
-                <td>${g.nip ?? '-'}</td>
-                <td><span class="badge bg-success">guru</span></td>
-                <td class="text-center">
-                    <button onclick="editGuru(${g.id})" class="btn btn-warning btn-sm">Edit</button>
-                    <button onclick="deleteGuru(${g.id})" class="btn btn-danger btn-sm">Hapus</button>
+                <td><span style="font-weight:600;color:var(--text-muted);">${i+1}</span></td>
+                <td>
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#1976D2,#00ACC1);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                            <i class="mdi mdi-account" style="color:#fff;font-size:16px;"></i>
+                        </div>
+                        <span style="font-weight:600;">${g.name}</span>
+                    </div>
                 </td>
-            </tr>
-            `
-                })
-            }
+                <td style="color:var(--text-muted);">${g.email}</td>
+                <td><code style="background:var(--bg-page);padding:2px 8px;border-radius:4px;font-size:12px;">${g.nip ?? '-'}</code></td>
+                <td><span class="badge-primary">Guru</span></td>
+                <td style="text-align:center;">
+                    <button onclick="editData(${g.id})" class="btn-sm-warn"><i class="mdi mdi-pencil"></i> Edit</button>
+                    <button onclick="hapus(${g.id})" class="btn-sm-danger"><i class="mdi mdi-delete"></i> Hapus</button>
+                </td>
+            </tr>`).join('')
+    }
 
-            document.getElementById('guru-table').innerHTML = html
-        }
+    function editData(id) { location.href = '/guru/form?id=' + id }
 
-        function editGuru(id) {
-            window.location.href = '/guru/form?id=' + id
-        }
+    function hapus(id) {
+        if (!confirm('Yakin ingin menghapus guru ini?')) return
+        fetch('/guru/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' } })
+            .then(() => { loadData(); showToast('Data guru berhasil dihapus'); })
+    }
 
-        function deleteGuru(id) {
-            if (!confirm('Yakin hapus?')) return
+    document.getElementById('search').addEventListener('keyup', function() {
+        const k = this.value.toLowerCase()
+        render(allData.filter(g => g.name.toLowerCase().includes(k) || g.email.toLowerCase().includes(k) || (g.nip||'').toLowerCase().includes(k)))
+    })
 
-            fetch('/guru/' + id, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                }
-            }).then(() => loadGuru())
-        }
-
-        loadGuru()
-    </script>
+    loadData()
+</script>
 @endpush

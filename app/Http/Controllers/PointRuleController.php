@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\PointRule;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PointRuleExport;
 
 class PointRuleController extends Controller
 {
@@ -65,5 +67,10 @@ class PointRuleController extends Controller
     {
         PointRule::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new PointRuleExport, 'data-point-rules-' . date('Ymd') . '.xlsx');
     }
 }

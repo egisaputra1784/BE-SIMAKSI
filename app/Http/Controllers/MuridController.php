@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\MuridExport;
 
 class MuridController extends Controller
 {
@@ -66,5 +68,10 @@ class MuridController extends Controller
     {
         User::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new MuridExport, 'data-murid-' . date('Ymd') . '.xlsx');
     }
 }

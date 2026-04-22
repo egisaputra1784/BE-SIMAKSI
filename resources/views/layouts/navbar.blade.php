@@ -1,53 +1,54 @@
-<!-- partial:partials/_navbar.html -->
-<nav class="navbar default-layout-navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row">
-    <div class="navbar-menu-wrapper d-flex align-items-stretch">
-        <button class="navbar-toggler navbar-toggler align-self-center" type="button" data-toggle="minimize">
-            <span class="mdi mdi-chevron-double-left"></span>
+<header class="simaksi-topbar">
+    <div class="topbar-left">
+        <button class="topbar-toggle" id="sidebarToggleBtn" title="Toggle Sidebar">
+            <i class="mdi mdi-menu"></i>
         </button>
-        <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-center">
-            <a class="navbar-brand brand-logo-mini" href="index.html"><img
-                    src="{{ asset('plus-admin-free/src/') }}/assets/images/logo-mini.svg" alt="logo" /></a>
+        <div class="topbar-breadcrumb">
+            <a href="/"><i class="mdi mdi-home-outline"></i></a>
+            <i class="mdi mdi-chevron-right" style="font-size:14px;"></i>
+            <span class="topbar-label" id="topbarTitle">Dashboard</span>
         </div>
-        <ul class="navbar-nav">
-            <li class="nav-item d-flex align-items-center">
-                <div class="d-flex align-items-center gap-2 fw-semibold text-white">
-
-                    <a href="#" class="text-decoration-none text-white d-flex align-items-center">
-                        <i class="mdi mdi-home-outline me-1"></i> Home
-                    </a>
-
-                    <i class="mdi mdi-chevron-right text-white-50"></i>
-
-                    <span class="text-white">Dashboard</span>
-
-                </div>
-            </li>
-        </ul>
-
-
-
-        <ul class="navbar-nav navbar-nav-right align-items-center">
-
-            <!-- User Avatar -->
-            <li class="nav-item me-2">
-                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center"
-                    style="width:35px;height:35px;">
-                    <i class="mdi mdi-account text-dark"></i>
-                </div>
-            </li>
-
-            <!-- Logout -->
-            <li class="nav-item nav-logout">
-                <a class="nav-link text-white" href="#" title="Logout">
-                    <i class="mdi mdi-logout"></i>
-                </a>
-            </li>
-
-        </ul>
-
-        <button class="navbar-toggler navbar-toggler-right d-lg-none align-self-center" type="button"
-            data-toggle="offcanvas">
-            <span class="mdi mdi-menu"></span>
-        </button>
     </div>
-</nav>
+
+    <div class="topbar-right">
+
+        {{-- Role badge --}}
+        @if(Auth::user()->role === 'superadmin')
+            <span style="background:#E3F2FD;color:#1565C0;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px;">
+                SUPERADMIN
+            </span>
+        @else
+            <span style="background:#E8F5E9;color:#2E7D32;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:.5px;">
+                ADMIN
+            </span>
+        @endif
+
+        {{-- User name --}}
+        <span style="font-size:13px;font-weight:600;color:var(--text-main);">
+            {{ Auth::user()->name }}
+        </span>
+
+        {{-- Avatar --}}
+        <div class="topbar-avatar" title="Profil">
+            <i class="mdi mdi-account"></i>
+        </div>
+
+        {{-- Logout --}}
+        <form method="POST" action="/logout" id="topbarLogout">
+            @csrf
+            <button type="submit" class="topbar-btn" title="Logout"
+                style="background:none;cursor:pointer;"
+                onclick="return confirm('Yakin ingin keluar?')">
+                <i class="mdi mdi-logout"></i>
+            </button>
+        </form>
+    </div>
+</header>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const h = document.querySelector('h3');
+        const topbarTitle = document.getElementById('topbarTitle');
+        if (h && topbarTitle) topbarTitle.textContent = h.textContent.trim();
+    });
+</script>

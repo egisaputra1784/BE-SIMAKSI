@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\TahunAjar;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\TahunAjarExport;
 
 class TahunAjarController extends Controller
 {
@@ -64,5 +66,10 @@ class TahunAjarController extends Controller
     {
         TahunAjar::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new TahunAjarExport, 'data-tahun-ajar-' . date('Ymd') . '.xlsx');
     }
 }

@@ -1,188 +1,156 @@
 @extends('layouts.master')
 
 @section('content')
-    <div class="content-wrapper pb-4">
 
-        {{-- HEADER --}}
-        <div class="page-header mb-4">
-            <h3 class="fw-bold">Dashboard Sekolah</h3>
-            <p class="text-muted mb-0">Panel kontrol sistem akademik & absensi</p>
+    {{-- PAGE HEADER --}}
+    <div class="page-header-bar">
+        <div>
+            <h3>Dashboard</h3>
+            <small>Selamat datang di Panel Kontrol SIMAKSI</small>
+        </div>
+        <div class="page-header-actions">
+            <span style="font-size:13px;color:var(--text-muted);">
+                <i class="mdi mdi-clock-outline me-1"></i>
+                {{ now()->format('l, d F Y') }}
+            </span>
+        </div>
+    </div>
+
+    {{-- STAT CARDS --}}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Total Murid</div>
+                    <div class="stat-value">{{ $totalMurid }}</div>
+                </div>
+                <div class="stat-icon" style="background:#E3F2FD;">
+                    <i class="mdi mdi-account-group" style="color:#1565C0;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Total Guru</div>
+                    <div class="stat-value">{{ $totalGuru }}</div>
+                </div>
+                <div class="stat-icon" style="background:#E8F5E9;">
+                    <i class="mdi mdi-teach" style="color:#2E7D32;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Total Kelas</div>
+                    <div class="stat-value">{{ $totalKelas }}</div>
+                </div>
+                <div class="stat-icon" style="background:#FFF8E1;">
+                    <i class="mdi mdi-google-classroom" style="color:#E65100;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div>
+                    <div class="stat-label">Sesi Absen Hari Ini</div>
+                    <div class="stat-value">{{ $totalSesiHariIni }}</div>
+                </div>
+                <div class="stat-icon" style="background:#FCE4EC;">
+                    <i class="mdi mdi-qrcode-scan" style="color:#C62828;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- ROW 2 --}}
+    <div class="row g-3">
+
+        {{-- Tahun Ajar Aktif --}}
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header-custom">
+                    <span class="card-title-custom"><i class="mdi mdi-calendar-check-outline me-2" style="color:var(--primary);"></i>Tahun Ajar Aktif</span>
+                </div>
+                <div class="card-body p-4">
+                    @if ($tahunAjar)
+                        <div style="font-size:22px;font-weight:800;color:var(--primary);margin-bottom:4px;">
+                            {{ $tahunAjar->nama }}
+                        </div>
+                        <span class="badge-success">● Aktif</span>
+                    @else
+                        <div style="font-size:14px;color:var(--danger);font-weight:600;">Belum ada tahun ajar aktif</div>
+                    @endif
+
+                    <hr style="margin:18px 0;border-color:var(--border);">
+
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;font-size:13.5px;">
+                            <span style="color:var(--text-muted);"><i class="mdi mdi-google-classroom me-1"></i>Total Kelas</span>
+                            <span style="font-weight:700;color:var(--text-main);">{{ $totalKelas }}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;font-size:13.5px;">
+                            <span style="color:var(--text-muted);"><i class="mdi mdi-school-outline me-1"></i>Total Murid</span>
+                            <span style="font-weight:700;color:var(--text-main);">{{ $totalMurid }}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;font-size:13.5px;">
+                            <span style="color:var(--text-muted);"><i class="mdi mdi-account-tie me-1"></i>Total Guru</span>
+                            <span style="font-weight:700;color:var(--text-main);">{{ $totalGuru }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-
-        {{-- ===================== STAT CARDS ===================== --}}
-        <div class="row">
-
-            {{-- Murid --}}
-            <div class="col-md-3 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Total Murid</p>
-                            <h3 class="fw-bold mb-0">512</h3>
-                        </div>
-                        <i class="mdi mdi-account-group text-primary" style="font-size:32px;"></i>
-                    </div>
+        {{-- Trend Chart --}}
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header-custom">
+                    <span class="card-title-custom"><i class="mdi mdi-chart-line me-2" style="color:var(--primary);"></i>Trend Murid & Guru</span>
+                </div>
+                <div class="card-body p-4">
+                    <canvas id="trendChart" height="90"></canvas>
                 </div>
             </div>
-
-            {{-- Guru --}}
-            <div class="col-md-3 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Total Guru</p>
-                            <h3 class="fw-bold mb-0">32</h3>
-                        </div>
-                        <i class="mdi mdi-teach text-success" style="font-size:32px;"></i>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Kelas --}}
-            <div class="col-md-3 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Total Kelas</p>
-                            <h3 class="fw-bold mb-0">18</h3>
-                        </div>
-                        <i class="mdi mdi-google-classroom text-warning" style="font-size:32px;"></i>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Absen hari ini --}}
-            <div class="col-md-3 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body d-flex justify-content-between align-items-center">
-                        <div>
-                            <p class="text-muted mb-1">Sesi Absen Hari Ini</p>
-                            <h3 class="fw-bold mb-0">9</h3>
-                        </div>
-                        <i class="mdi mdi-qrcode-scan text-danger" style="font-size:32px;"></i>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-
-
-        {{-- ===================== ROW 2 ===================== --}}
-        <div class="row">
-
-            {{-- Tahun ajar aktif --}}
-            <div class="col-lg-4 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="fw-bold mb-3">Tahun Ajar Aktif</h5>
-
-                        <h3 class="text-primary fw-bold">2025 / 2026</h3>
-                        <p class="text-muted">Status: Aktif</p>
-
-                        <hr>
-
-                        <p class="mb-1">Jumlah Kelas : <b>18</b></p>
-                        <p class="mb-1">Jumlah Murid : <b>512</b></p>
-                        <p class="mb-0">Jumlah Guru : <b>32</b></p>
-                    </div>
-                </div>
-            </div>
-
-
-            {{-- Jadwal hari ini --}}
-            <div class="col-lg-8 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-
-                        <h5 class="fw-bold mb-3">Jadwal Hari Ini</h5>
-
-                        <div class="table-responsive">
-                            <table class="table table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>Kelas</th>
-                                        <th>Mapel</th>
-                                        <th>Guru</th>
-                                        <th>Jam</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>X RPL 1</td>
-                                        <td>Pemrograman Web</td>
-                                        <td>Pak Budi</td>
-                                        <td>07:00 - 08:30</td>
-                                    </tr>
-                                    <tr>
-                                        <td>X RPL 2</td>
-                                        <td>Basis Data</td>
-                                        <td>Bu Sinta</td>
-                                        <td>08:30 - 10:00</td>
-                                    </tr>
-                                    <tr>
-                                        <td>XI TKJ</td>
-                                        <td>Jaringan</td>
-                                        <td>Pak Andi</td>
-                                        <td>10:15 - 11:45</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-
-
-        {{-- ===================== ROW 3 ===================== --}}
-        <div class="row">
-
-            {{-- Rekap absensi --}}
-            <div class="col-lg-8 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-                        <h5 class="fw-bold mb-3">Rekap Absensi Hari Ini</h5>
-
-                        <div class="d-flex gap-4">
-                            <span class="badge bg-success p-2">Hadir : 480</span>
-                            <span class="badge bg-warning p-2">Izin : 20</span>
-                            <span class="badge bg-danger p-2">Alpha : 12</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Quick actions --}}
-            <div class="col-lg-4 grid-margin stretch-card">
-                <div class="card shadow-sm">
-                    <div class="card-body">
-
-                        <h5 class="fw-bold mb-3">Aksi Cepat</h5>
-
-                        <div class="d-grid gap-2">
-                            <a href="#" class="btn btn-primary">
-                                <i class="mdi mdi-plus"></i> Tambah Kelas
-                            </a>
-
-                            <a href="#" class="btn btn-success">
-                                <i class="mdi mdi-book-plus"></i> Tambah Mapel
-                            </a>
-
-                            <a href="#" class="btn btn-warning">
-                                <i class="mdi mdi-qrcode"></i> Buka Sesi Absen
-                            </a>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-
         </div>
 
     </div>
+
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('trendChart');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {!! json_encode($trend['labels']) !!},
+            datasets: [{
+                label: 'Murid',
+                data: {!! json_encode($trend['murid']) !!},
+                borderColor: '#1565C0',
+                backgroundColor: 'rgba(21,101,192,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4,
+                pointBackgroundColor: '#1565C0'
+            },{
+                label: 'Guru',
+                data: {!! json_encode($trend['guru']) !!},
+                borderColor: '#00ACC1',
+                backgroundColor: 'rgba(0,172,193,0.08)',
+                tension: 0.4, fill: true, pointRadius: 4,
+                pointBackgroundColor: '#00ACC1'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top', labels: { font: { family: 'Inter', size: 12 }, usePointStyle: true } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: '#f0f0f0' }, ticks: { font: { family: 'Inter' } } },
+                x: { grid: { display: false }, ticks: { font: { family: 'Inter' } } }
+            }
+        }
+    });
+</script>
+@endpush

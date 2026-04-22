@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AnggotaKelas;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\AnggotaKelasExport;
 
 class AnggotaKelasController extends Controller
 {
@@ -48,5 +50,10 @@ class AnggotaKelasController extends Controller
     {
         AnggotaKelas::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new AnggotaKelasExport, 'data-anggota-kelas-' . date('Ymd') . '.xlsx');
     }
 }

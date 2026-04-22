@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\FlexibilityItem;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\FlexibilityItemExport;
 
 class FlexibilityItemController extends Controller
 {
@@ -62,5 +64,10 @@ class FlexibilityItemController extends Controller
     {
         FlexibilityItem::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new FlexibilityItemExport, 'data-flexibility-items-' . date('Ymd') . '.xlsx');
     }
 }

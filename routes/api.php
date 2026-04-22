@@ -23,6 +23,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::post('/logout', [AuthControllers::class, 'logout']);
     Route::post('/change-password', [AuthControllers::class, 'changePassword']);
+    Route::get('/dataProfil', [ApiControllers::class, 'me']);
 
     /*
 |--------------------------------------------------------------------------

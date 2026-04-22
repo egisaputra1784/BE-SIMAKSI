@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Mapel;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\MapelExport;
 
 class MapelController extends Controller
 {
@@ -53,5 +55,10 @@ class MapelController extends Controller
     {
         Mapel::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new MapelExport, 'data-mapel-' . date('Ymd') . '.xlsx');
     }
 }

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\GuruMapel;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\GuruMapelExport;
 
 class GuruMapelController extends Controller
 {
@@ -53,5 +55,10 @@ class GuruMapelController extends Controller
     {
         GuruMapel::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new GuruMapelExport, 'data-guru-mapel-' . date('Ymd') . '.xlsx');
     }
 }

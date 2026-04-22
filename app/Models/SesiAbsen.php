@@ -10,6 +10,11 @@ class SesiAbsen extends Model
     public $timestamps = false;
     protected $guarded = [];
 
+    protected $casts = [
+        'dibuka_pada' => 'datetime',
+        'created_at'  => 'datetime',
+    ];
+
     public function absensi()
     {
         return $this->hasMany(Absensi::class, 'sesi_absen_id');

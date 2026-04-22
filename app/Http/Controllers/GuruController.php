@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\GuruExport;
 
 class GuruController extends Controller
 {
@@ -72,5 +74,10 @@ class GuruController extends Controller
     {
         User::destroy($id);
         return response()->json(['success' => true]);
+    }
+
+    public function exportExcel()
+    {
+        return Excel::download(new GuruExport, 'data-guru-' . date('Ymd') . '.xlsx');
     }
 }

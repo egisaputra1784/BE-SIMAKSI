@@ -1156,17 +1156,36 @@ class ApiControllers extends Controller
     }
 
 
-    private function formatLateTime($start, $end)
+    public function me()
     {
-        $seconds = Carbon::parse($start)->diffInSeconds($end);
+        $user = JWTAuth::parseToken()->authenticate();
 
-        $min = floor($seconds / 60);
-        $sec = $seconds % 60;
-
-        return [
-            'minutes' => $min,
-            'seconds' => $sec,
-            'text' => ($min > 0 ? "{$min} menit " : "") . "{$sec} detik"
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->role,
         ];
+
+        if ($user->role === 'guru') {
+            $data['nip'] = $user->nip ?? null;
+        }
+
+        if ($user->role === 'murid') {
+
+            // ambil kelas pertama (karena bisa banyak)
+            $kelas = $user->kelasMurid()->first();
+
+            $data['nisn'] = $user->nisn ?? null;
+
+            $data['kelas'] = $kelas ? [
+                'id' => $kelas->id,
+                'nama' => $kelas->nama_kelas,
+            ] : null;
+        }
+
+        return response()->json([
+            'data' => $data
+        ]);
     }
 }
