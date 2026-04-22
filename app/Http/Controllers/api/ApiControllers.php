@@ -48,9 +48,7 @@ class ApiControllers extends Controller
             return response()->json(['message' => 'Tidak ada jadwal aktif'], 404);
         }
 
-        $tipe = $aktif->id === $jadwal->first()->id
-            ? 'masuk'
-            : ($aktif->id === $jadwal->last()->id ? 'pulang' : 'mapel');
+
 
         $token = Str::random(8);
 
@@ -58,7 +56,6 @@ class ApiControllers extends Controller
             'jadwal_id' => $aktif->id,
             'tanggal' => now()->toDateString(),
             'token_qr' => $token,
-            'tipe' => $tipe,
             'dibuka_oleh' => $guru->id,
             'dibuka_pada' => now()
         ]);
@@ -195,7 +192,6 @@ class ApiControllers extends Controller
                 'late_minutes' => $lateMinutes,
                 'point' => $point
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
 
@@ -229,67 +225,76 @@ class ApiControllers extends Controller
 
             foreach ($request->data as $item) {
 
-                // ambil data lama dulu (kalau ada)
+                $muridId = $item['murid_id'];
+                $newStatus = $item['status'];
+
+                // =========================
+                // AMBIL DATA LAMA
+                // =========================
                 $existing = Absensi::where([
                     'sesi_absen_id' => $sesi->id,
-                    'murid_id' => $item['murid_id']
+                    'murid_id' => $muridId
                 ])->first();
 
                 $oldStatus = $existing->status ?? null;
 
-                // update / create absensi
+                // =========================
+                // UPDATE / CREATE
+                // =========================
                 $absen = Absensi::updateOrCreate(
                     [
                         'sesi_absen_id' => $sesi->id,
-                        'murid_id' => $item['murid_id']
+                        'murid_id' => $muridId
                     ],
                     [
-                        'status' => $item['status'],
+                        'status' => $newStatus,
                         'waktu_scan' => now()
                     ]
                 );
 
                 /*
-                ======================================
-                🔥 LOGIC POINT (ANTI DOUBLE + ROLLBACK)
-                ======================================
-                */
+            =========================
+            🔥 RESET POINT (BIAR GA DOUBLE)
+            =========================
+            */
 
-                // ✅ kalau sebelumnya alpha, sekarang bukan → hapus penalty
-                if ($oldStatus === 'alpha' && $item['status'] !== 'alpha') {
+                // hapus semua point lama terkait absensi ini
+                PointLedger::where('absensi_id', $absen->id)->delete();
 
-                    $lastPenalty = PointLedger::where('absensi_id', $absen->id)
-                        ->where('transaction_type', 'PENALTY')
-                        ->latest('id')
-                        ->first();
+                /*
+            =========================
+            🔥 APPLY LOGIC
+            =========================
+            */
 
-                    if ($lastPenalty) {
-                        $lastPenalty->delete();
-                    }
+                // 1. ALPHA
+                if ($newStatus === 'alpha') {
+
+                    $this->applyPoint($muridId, $absen, null, 'alpha');
+                    continue;
                 }
 
-                // ✅ kalau sekarang alpha → kasih penalty (kalau belum ada)
-                if ($item['status'] === 'alpha') {
-
-                    $alreadyPointed = PointLedger::where('absensi_id', $absen->id)->exists();
-
-                    if (!$alreadyPointed) {
-                        $this->applyPoint($item['murid_id'], $absen, null, 'alpha');
-                    }
-                }
-
-                // ✅ APPLY POINT (TELAT / RULE TIME)
+                // 2. NON ALPHA (hadir / izin / sakit)
+                // hitung telat
                 $lateMinutes = Carbon::parse($sesi->dibuka_pada)
                     ->diffInMinutes($absen->waktu_scan);
 
-                $this->applyPoint($item['murid_id'], $absen, $lateMinutes, $item['status']);
+                // NOTE:
+                // kalau izin/sakit, biasanya gak kena TIME RULE
+                if (in_array($newStatus, ['izin', 'sakit'])) {
+                    $lateMinutes = null;
+                }
+
+                $this->applyPoint($muridId, $absen, $lateMinutes, $newStatus);
             }
 
             DB::commit();
 
-            return response()->json(['message' => 'Berhasil update absensi']);
-
+            return response()->json([
+                'message' => 'Berhasil update absensi'
+            ]);
         } catch (\Exception $e) {
+
             DB::rollBack();
 
             return response()->json([
@@ -1064,6 +1069,12 @@ class ApiControllers extends Controller
             // ALPHA RULE
             // =========================
             if ($rule->condition_type === 'ALPHA') {
+
+                // 🚫 kalau voucher dipakai → skip total
+                if ($usedVoucher) {
+                    continue;
+                }
+
                 if ($status === 'alpha') {
                     $match = true;
                 }
@@ -1159,7 +1170,3 @@ class ApiControllers extends Controller
         ];
     }
 }
-
-
-
-
