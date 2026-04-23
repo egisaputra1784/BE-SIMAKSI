@@ -13,7 +13,6 @@ class CreateSesiAbsenTable extends Migration
             $table->foreignId('jadwal_id')->nullable()->constrained('jadwal');
             $table->date('tanggal');
             $table->string('token_qr')->index();
-            $table->enum('tipe', ['masuk','mapel','pulang']);
             $table->foreignId('dibuka_oleh')->constrained('users');
             $table->timestamp('dibuka_pada');
             $table->boolean('is_closed')->default(false);

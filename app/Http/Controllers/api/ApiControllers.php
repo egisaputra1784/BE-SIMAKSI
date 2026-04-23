@@ -1188,4 +1188,48 @@ class ApiControllers extends Controller
             'data' => $data
         ]);
     }
+
+    public function riwayatAbsensi(Request $request)
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if ($user->role !== 'murid') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $query = Absensi::with([
+            'sesiAbsen.jadwal.mapel',
+            'sesiAbsen.jadwal.kelas',
+        ])
+            ->where('murid_id', $user->id);
+
+        // optional filter tanggal
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->start_date,
+                $request->end_date
+            ]);
+        }
+
+        $data = $query->latest()->get()->map(function ($a) {
+
+            $jadwal = $a->sesiAbsen?->jadwal;
+
+            return [
+                'id' => $a->id,
+                'tanggal' => $a->created_at,
+                'status' => $a->status,
+                'waktu_scan' => $a->waktu_scan,
+
+                'mapel' => $jadwal?->mapel?->nama_mapel,
+                'kelas' => $jadwal?->kelas?->nama_kelas,
+                'jam_mulai' => $jadwal?->jam_mulai,
+                'jam_selesai' => $jadwal?->jam_selesai,
+            ];
+        });
+
+        return response()->json([
+            'data' => $data
+        ]);
+    }
 }

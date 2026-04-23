@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'auth.admin' => \App\Http\Middleware\AuthenticateAdmin::class,
             'superadmin' => \App\Http\Middleware\SuperadminOnly::class,
-            'adminonly' => \App\Http\Middleware\AdminOnly::class, // ← INI YANG LO LUPA
+            'adminonly' => \App\Http\Middleware\AdminOnly::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

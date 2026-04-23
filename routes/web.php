@@ -30,13 +30,16 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index']);
+    Route::get('/guru/data', [GuruController::class, 'data']);
+    Route::get('/admin/data', [AdminController::class, 'data']);
+    Route::get('/murid/data', [MuridController::class, 'data']);
 
     /*
     | SUPERADMIN ONLY
     */
     Route::group([
         'middleware' => function ($request, $next) {
-            if (auth()->user()->role !== 'superadmin')
+            if (auth('web')->user()->role !== 'superadmin')
                 abort(403);
             return $next($request);
         }
@@ -45,7 +48,7 @@ Route::middleware('auth')->group(function () {
         // ADMIN
         Route::get('/admin', [AdminController::class, 'index']);
         Route::get('/admin/form', fn() => view('admin.form'));
-        Route::get('/admin/data', [AdminController::class, 'data']);
+
         Route::post('/admin', [AdminController::class, 'store']);
         Route::get('/admin/{id}', [AdminController::class, 'show']);
         Route::put('/admin/{id}', [AdminController::class, 'update']);
@@ -53,7 +56,7 @@ Route::middleware('auth')->group(function () {
 
         // GURU
         Route::get('/guru', [GuruController::class, 'index']);
-        Route::get('/guru/data', [GuruController::class, 'data']);
+
         Route::get('/guru/form', fn() => view('guru.form'));
         Route::post('/guru', [GuruController::class, 'store']);
         Route::get('/guru/{id}', [GuruController::class, 'show']);
@@ -63,7 +66,7 @@ Route::middleware('auth')->group(function () {
 
         // MURID
         Route::get('/murid', [MuridController::class, 'index']);
-        Route::get('/murid/data', [MuridController::class, 'data']);
+
         Route::get('/murid/form', fn() => view('murid.form'));
         Route::post('/murid', [MuridController::class, 'store']);
         Route::get('/murid/{id}', [MuridController::class, 'show']);
@@ -77,7 +80,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::group([
         'middleware' => function ($request, $next) {
-            if (!in_array(auth()->user()->role, ['admin', 'superadmin']))
+            if (!in_array(auth('web')->user()->role, ['admin', 'superadmin']))
                 abort(403);
             return $next($request);
         }

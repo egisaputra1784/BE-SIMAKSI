@@ -42,6 +42,7 @@ Route::middleware('auth:api')->group(function () {
 
     // murid dalam sesi
     Route::get('/sesi/{id}/murid', [ApiControllers::class, 'getMuridSesi']);
+    Route::get('/riwayat', [ApiControllers::class, 'riwayatAbsensi']);
 
 
     /*
